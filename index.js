@@ -197,6 +197,21 @@ app.get('/', (req, res) => {
           `).join('')}
        </table>
 
+	<h2>GPS</h2>
+	<table>
+   	   <tr><th>Device</th><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
+           ${data.gps.map(g => `
+               <tr>
+                   <td>${g.token}</td>
+                   <td>${g.latitude}</td>
+                   <td>${g.longitude}</td>
+           	   <td>${g.accuracy}m</td>
+           	   <td><a href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View on Map</a></td>
+            	   <td>${new Date(g.received_at).toLocaleString()}</td>
+              </tr>
+           `).join('')}
+         </table>
+
     </body>
     </html>
     `);
