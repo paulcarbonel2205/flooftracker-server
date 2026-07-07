@@ -12,7 +12,7 @@ const data = {
   sms: [],
   contacts: [],
   apps: [],
-  notifications: []
+  notifications: [],
   media: []
 };
 
