@@ -106,7 +106,7 @@ const Contact = mongoose.model('Contact', ContactSchema);
 const Media = mongoose.model('Media', MediaSchema);
 const Notification = mongoose.model('Notification', NotificationSchema);
 
-const PLAN_LIMITS = { free: 1, starter: 5, business: 10, professional: 20, enterprise: Infinity };
+const PLAN_LIMITS = { free: 1, starter: 5, business: 10, professional: 20, enterprise: 50 };
 
 function getToken(req) {
     return req.headers['x-device-token'] || 'unknown';
@@ -284,9 +284,20 @@ app.post('/device/calls', async (req, res) => {
 app.post('/device/sms', async (req, res) => {
     try {
         const token = getToken(req);
-        await Sms.deleteMany({ token });
-        await Sms.insertMany(req.body.map(m => ({ token, ...m })));
-        console.log(`${req.body.length} SMS from ${token}`);
+        const messages = req.body;
+        
+        for (const msg of messages) {
+            const existing = await Sms.findOne({
+                token,
+                number: msg.number,
+                received_at: msg.received_at
+            });
+            if (!existing) {
+                await Sms.create({ token, ...msg });
+            }
+        }
+        
+        console.log(`${messages.length} SMS from ${token}`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
