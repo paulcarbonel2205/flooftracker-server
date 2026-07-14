@@ -112,6 +112,48 @@ function getToken(req) {
     return req.headers['x-device-token'] || 'unknown';
 }
 
+const styles = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f0f2f5; }
+    .header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 20px; }
+    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: #1a1a2e; color: white; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
+    .msg { padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
+    .msg-error { background: #fde; color: #c00; }
+    .msg-success { background: #dfd; color: #060; }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: #1a1a2e; color: white; padding: 10px; text-align: left; font-size: 13px; }
+    td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+    tr:hover { background: #f9f9f9; }
+    .token-card { background: #f8f8f8; border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+    .token-code { font-family: monospace; font-size: 12px; color: #555; word-break: break-all; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
+    .badge-green { background: #dfd; color: #060; }
+    .badge-gray { background: #eee; color: #666; }
+    img.thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+    .plan-card { border: 2px solid #ddd; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .plan-card:hover { border-color: #1a1a2e; transform: translateY(-2px); }
+    .plan-card h3 { margin-bottom: 8px; }
+    .plan-card .price { font-size: 20px; font-weight: bold; color: #1a1a2e; margin: 8px 0; }
+    .plan-card .devices { color: #666; font-size: 13px; margin-bottom: 12px; }
+    .plan-card.popular { border-color: #1a1a2e; background: #f0f2ff; }
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: #eee; color: #555; transition: all 0.2s; }
+    .tab.active { background: #1a1a2e; color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .empty { text-align: center; color: #888; padding: 40px; }
+    .no-data { color: #888; text-align: center; padding: 30px; }
+`;
+
 // ── Employer Routes ──────────────────────────────────────────────────────────
 
 app.post('/employer/register', async (req, res) => {
@@ -152,14 +194,11 @@ app.post('/employer/generate-token', async (req, res) => {
         const { employer_id } = req.body;
         const employer = await Employer.findById(employer_id);
         if (!employer) return res.json({ success: false, message: 'Employer not found' });
-
         const tokenCount = await Token.countDocuments({ employer_id, active: true });
         const limit = PLAN_LIMITS[employer.plan] || 1;
-
         if (tokenCount >= limit) {
             return res.json({ success: false, message: `Device limit reached for ${employer.plan} plan. Please upgrade.` });
         }
-
         const token = crypto.randomBytes(16).toString('hex');
         await Token.create({ token, employer_id });
         res.json({ success: true, token });
@@ -235,6 +274,7 @@ app.post('/device/calls', async (req, res) => {
         const token = getToken(req);
         await Call.deleteMany({ token });
         await Call.insertMany(req.body.map(c => ({ token, ...c })));
+        console.log(`${req.body.length} calls from ${token}`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
@@ -246,6 +286,7 @@ app.post('/device/sms', async (req, res) => {
         const token = getToken(req);
         await Sms.deleteMany({ token });
         await Sms.insertMany(req.body.map(m => ({ token, ...m })));
+        console.log(`${req.body.length} SMS from ${token}`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
@@ -257,6 +298,7 @@ app.post('/device/apps', async (req, res) => {
         const token = getToken(req);
         await App.deleteMany({ token });
         await App.insertMany(req.body.map(a => ({ token, ...a })));
+        console.log(`${req.body.length} apps from ${token}`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
@@ -268,6 +310,7 @@ app.post('/device/contacts', async (req, res) => {
         const token = getToken(req);
         await Contact.deleteMany({ token });
         await Contact.insertMany(req.body.map(c => ({ token, ...c })));
+        console.log(`${req.body.length} contacts from ${token}`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
@@ -277,10 +320,13 @@ app.post('/device/contacts', async (req, res) => {
 app.post('/device/media', async (req, res) => {
     try {
         const token = getToken(req);
-        await Media.deleteMany({ token });
+        console.log(`Media received from token: ${token}, count: ${req.body.length}`);
+        const deleted = await Media.deleteMany({ token });
+        console.log(`Deleted ${deleted.deletedCount} old media records`);
         await Media.insertMany(req.body.map(m => ({ token, ...m })));
         res.json({ success: true });
     } catch (e) {
+        console.error('Media error:', e.message);
         res.json({ success: false, message: e.message });
     }
 });
@@ -289,6 +335,7 @@ app.post('/device/notifications', async (req, res) => {
     try {
         const token = getToken(req);
         await Notification.create({ token, ...req.body, received_at: new Date() });
+        console.log(`Notification from ${token}`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
@@ -297,50 +344,15 @@ app.post('/device/notifications', async (req, res) => {
 
 // ── Frontend Pages ───────────────────────────────────────────────────────────
 
-const styles = `
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: #f0f2f5; }
-    .header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-    .header h1 { font-size: 20px; }
-    .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
-    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
-    .btn-primary { background: #1a1a2e; color: white; }
-    .btn-danger { background: #e74c3c; color: white; }
-    .btn-success { background: #27ae60; color: white; }
-    input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
-    .msg { padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
-    .msg-error { background: #fde; color: #c00; }
-    .msg-success { background: #dfd; color: #060; }
-    table { width: 100%; border-collapse: collapse; }
-    th { background: #1a1a2e; color: white; padding: 10px; text-align: left; font-size: 13px; }
-    td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
-    tr:hover { background: #f9f9f9; }
-    .token-card { background: #f8f8f8; border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .token-code { font-family: monospace; font-size: 13px; color: #555; }
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
-    .badge-green { background: #dfd; color: #060; }
-    .badge-gray { background: #eee; color: #666; }
-    img.thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
-    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
-    .plan-card { border: 2px solid #ddd; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
-    .plan-card:hover { border-color: #1a1a2e; transform: translateY(-2px); }
-    .plan-card h3 { margin-bottom: 8px; }
-    .plan-card .price { font-size: 22px; font-weight: bold; color: #1a1a2e; margin: 8px 0; }
-    .plan-card .devices { color: #666; font-size: 13px; }
-    .plan-card.popular { border-color: #1a1a2e; background: #f0f2ff; }
-`;
-
-// Login page
 app.get('/', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>FloofTracker</title><style>
     ${styles}
-    .login-wrap { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .login-box { background: white; border-radius: 16px; padding: 40px; width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-    .login-box h2 { margin-bottom: 6px; color: #1a1a2e; }
-    .login-box p { color: #888; margin-bottom: 24px; font-size: 14px; }
-    .btn { width: 100%; padding: 12px; font-size: 15px; }
-    a { display: block; text-align: center; margin-top: 16px; color: #666; font-size: 13px; text-decoration: none; }
+    .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; }
+    .login-box { background:white; border-radius:16px; padding:40px; width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
+    .login-box h2 { margin-bottom:6px; color:#1a1a2e; }
+    .login-box p { color:#888; margin-bottom:24px; font-size:14px; }
+    .btn { width:100%; padding:12px; font-size:15px; }
+    a { display:block; text-align:center; margin-top:16px; color:#666; font-size:13px; text-decoration:none; }
     </style></head><body>
     <div class="login-wrap">
         <div class="login-box">
@@ -358,18 +370,14 @@ app.get('/', (req, res) => {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const res = await fetch('/employer/login', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json();
             if (data.success) {
                 localStorage.setItem('employer_id', data.employer_id);
                 localStorage.setItem('plan', data.plan);
-                if (!data.plan || data.plan === 'free' && data.firstLogin) {
-                    window.location.href = '/welcome';
-                } else {
-                    window.location.href = '/tokens';
-                }
+                window.location.href = data.plan === 'free' ? '/welcome' : '/tokens';
             } else {
                 const msg = document.getElementById('msg');
                 msg.style.display = 'block';
@@ -380,16 +388,15 @@ app.get('/', (req, res) => {
     </body></html>`);
 });
 
-// Register page
 app.get('/register', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Register - FloofTracker</title><style>
     ${styles}
-    .login-wrap { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .login-box { background: white; border-radius: 16px; padding: 40px; width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-    .login-box h2 { margin-bottom: 6px; color: #1a1a2e; }
-    .login-box p { color: #888; margin-bottom: 24px; font-size: 14px; }
-    .btn { width: 100%; padding: 12px; font-size: 15px; }
-    a { display: block; text-align: center; margin-top: 16px; color: #666; font-size: 13px; text-decoration: none; }
+    .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; }
+    .login-box { background:white; border-radius:16px; padding:40px; width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
+    .login-box h2 { margin-bottom:6px; color:#1a1a2e; }
+    .login-box p { color:#888; margin-bottom:24px; font-size:14px; }
+    .btn { width:100%; padding:12px; font-size:15px; }
+    a { display:block; text-align:center; margin-top:16px; color:#666; font-size:13px; text-decoration:none; }
     </style></head><body>
     <div class="login-wrap">
         <div class="login-box">
@@ -409,13 +416,9 @@ app.get('/register', (req, res) => {
             const password = document.getElementById('password').value;
             const confirm = document.getElementById('confirm').value;
             const msg = document.getElementById('msg');
-            if (password !== confirm) {
-                msg.style.display = 'block';
-                msg.textContent = 'Passwords do not match';
-                return;
-            }
+            if (password !== confirm) { msg.style.display='block'; msg.textContent='Passwords do not match'; return; }
             const res = await fetch('/employer/register', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({ email, password })
             });
             const data = await res.json();
@@ -424,24 +427,21 @@ app.get('/register', (req, res) => {
                 localStorage.setItem('plan', 'free');
                 window.location.href = '/welcome';
             } else {
-                msg.style.display = 'block';
-                msg.textContent = data.message;
+                msg.style.display='block'; msg.textContent=data.message;
             }
         }
     </script>
     </body></html>`);
 });
 
-// Welcome/Features page
 app.get('/welcome', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Welcome - FloofTracker</title><style>
     ${styles}
-    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 20px 0; }
-    .feature-item { background: #f8f8f8; border-radius: 10px; padding: 20px; text-align: center; }
-    .feature-item .icon { font-size: 32px; margin-bottom: 10px; }
-    .feature-item h4 { color: #1a1a2e; margin-bottom: 6px; }
-    .feature-item p { color: #888; font-size: 13px; }
-    .btn { padding: 14px 40px; font-size: 15px; }
+    .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin:20px 0; }
+    .feature-item { background:#f8f8f8; border-radius:10px; padding:20px; text-align:center; }
+    .feature-item .icon { font-size:32px; margin-bottom:10px; }
+    .feature-item h4 { color:#1a1a2e; margin-bottom:6px; }
+    .feature-item p { color:#888; font-size:13px; }
     </style></head><body>
     <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()">Logout</button></div>
     <div class="container">
@@ -457,7 +457,7 @@ app.get('/welcome', (req, res) => {
                 <div class="feature-item"><div class="icon">🖼️</div><h4>Photos & Screenshots</h4><p>Thumbnail previews of all captured media</p></div>
                 <div class="feature-item"><div class="icon">🔔</div><h4>Instant Messages</h4><p>Facebook, Instagram, WhatsApp, Viber and more</p></div>
             </div>
-            <button class="btn btn-primary" onclick="window.location.href='/plans'" style="margin-top:30px">Choose a Plan →</button>
+            <button class="btn btn-primary" onclick="window.location.href='/plans'" style="margin-top:30px;padding:14px 40px;font-size:15px">Choose a Plan →</button>
         </div>
     </div>
     <script>
@@ -467,11 +467,10 @@ app.get('/welcome', (req, res) => {
     </body></html>`);
 });
 
-// Plans page
 app.get('/plans', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Plans - FloofTracker</title><style>
     ${styles}
-    .btn { padding: 12px 24px; font-size: 14px; width: 100%; margin-top: 16px; }
+    .btn { padding:12px 24px; font-size:14px; width:100%; margin-top:12px; }
     </style></head><body>
     <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()" style="width:auto">Logout</button></div>
     <div class="container">
@@ -506,7 +505,7 @@ app.get('/plans', (req, res) => {
                 <div class="plan-card" onclick="selectPlan('enterprise')">
                     <h3>Enterprise</h3>
                     <div class="price">Coming Soon</div>
-                    <div class="devices">Unlimited devices</div>
+                    <div class="devices">Unlimited</div>
                     <button class="btn btn-primary">Select</button>
                 </div>
             </div>
@@ -518,7 +517,7 @@ app.get('/plans', (req, res) => {
         async function selectPlan(plan) {
             const employer_id = localStorage.getItem('employer_id');
             await fetch('/employer/set-plan', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({ employer_id, plan })
             });
             localStorage.setItem('plan', plan);
@@ -528,16 +527,14 @@ app.get('/plans', (req, res) => {
     </body></html>`);
 });
 
-// Tokens page
 app.get('/tokens', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Devices - FloofTracker</title><style>
     ${styles}
-    .btn { padding: 10px 20px; }
-    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
     </style></head><body>
     <div class="header"><h1>FloofTracker</h1>
-        <div>
-            <button class="btn btn-primary" onclick="window.location.href='/plans'" style="margin-right:8px">Change Plan</button>
+        <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="window.location.href='/plans'">Change Plan</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
     </div>
@@ -546,7 +543,7 @@ app.get('/tokens', (req, res) => {
             <div class="top-bar">
                 <div>
                     <h2 style="color:#1a1a2e">Your Devices</h2>
-                    <p style="color:#888;font-size:13px">Plan: <b id="plan_label"></b> · <span id="device_count"></span></p>
+                    <p style="color:#888;font-size:13px;margin-top:4px">Plan: <b id="plan_label"></b> &nbsp;·&nbsp; <span id="device_count"></span></p>
                 </div>
                 <button class="btn btn-success" onclick="generateToken()">+ Add Device</button>
             </div>
@@ -558,13 +555,12 @@ app.get('/tokens', (req, res) => {
         if (!localStorage.getItem('employer_id')) window.location.href = '/';
         const employer_id = localStorage.getItem('employer_id');
         const plan = localStorage.getItem('plan') || 'free';
-        const limits = { free: 1, starter: 5, business: 10, professional: 20, enterprise: 'Unlimited' };
-
+        const limits = { free:1, starter:5, business:10, professional:20, enterprise:'Unlimited' };
         document.getElementById('plan_label').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
 
         async function loadTokens() {
             const res = await fetch('/employer/tokens', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({ employer_id })
             });
             const data = await res.json();
@@ -573,25 +569,25 @@ app.get('/tokens', (req, res) => {
             document.getElementById('device_count').textContent = data.tokens.length + ' / ' + limit + ' devices';
 
             if (data.tokens.length === 0) {
-                list.innerHTML = '<p style="color:#888;text-align:center;padding:40px">No devices yet. Click "+ Add Device" to generate a token.</p>';
+                list.innerHTML = '<p class="empty">No devices yet. Click "+ Add Device" to generate a token.</p>';
                 return;
             }
 
             list.innerHTML = data.tokens.map(t => \`
                 <div class="token-card">
-                    <div>
+                    <div style="flex:1;min-width:0;margin-right:12px">
                         <div style="font-weight:bold;margin-bottom:4px">
                             \${t.registered ? '📱 ' + t.device_name : '⏳ Awaiting registration'}
                         </div>
                         <div class="token-code">\${t.token}</div>
-                        <span class="badge \${t.registered ? 'badge-green' : 'badge-gray'}">
+                        <span class="badge \${t.registered ? 'badge-green' : 'badge-gray'}" style="margin-top:6px;display:inline-block">
                             \${t.registered ? 'Active' : 'Not registered'}
                         </span>
                     </div>
-                    <div style="display:flex;gap:8px;align-items:center">
-                        <button class="btn" onclick="copyToken('\${t.token}')" style="background:#eee;color:#333">Copy</button>
-                        \${t.registered ? \`<button class="btn btn-primary" onclick="viewDevice('\${t.token}')">View</button>\` : ''}
-                        <button class="btn btn-danger" onclick="deleteToken('\${t._id}')">Remove</button>
+                    <div style="display:flex;gap:8px;flex-shrink:0">
+                        <button class="btn btn-sm" onclick="copyToken('\${t.token}')" style="background:#eee;color:#333">Copy</button>
+                        \${t.registered ? \`<button class="btn btn-sm btn-primary" onclick="viewDevice('\${t.token}')">View</button>\` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteToken('\${t._id}')">Remove</button>
                     </div>
                 </div>
             \`).join('');
@@ -599,24 +595,19 @@ app.get('/tokens', (req, res) => {
 
         async function generateToken() {
             const res = await fetch('/employer/generate-token', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({ employer_id })
             });
             const data = await res.json();
             const msg = document.getElementById('msg');
-            if (data.success) {
-                msg.style.display = 'none';
-                loadTokens();
-            } else {
-                msg.style.display = 'block';
-                msg.textContent = data.message;
-            }
+            if (data.success) { msg.style.display='none'; loadTokens(); }
+            else { msg.style.display='block'; msg.textContent=data.message; }
         }
 
         async function deleteToken(token_id) {
             if (!confirm('Remove this device?')) return;
             await fetch('/employer/delete-token', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
+                method:'POST', headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({ token_id })
             });
             loadTokens();
@@ -627,10 +618,7 @@ app.get('/tokens', (req, res) => {
             alert('Token copied: ' + token);
         }
 
-        function viewDevice(token) {
-            window.location.href = '/device?token=' + token;
-        }
-
+        function viewDevice(token) { window.location.href = '/device?token=' + token; }
         function logout() { localStorage.clear(); window.location.href = '/'; }
 
         loadTokens();
@@ -638,7 +626,7 @@ app.get('/tokens', (req, res) => {
     </body></html>`);
 });
 
-// Per-device dashboard
+// Per-device dashboard with tabs
 app.get('/device', async (req, res) => {
     const token = req.query.token;
     if (!token) return res.redirect('/tokens');
@@ -652,87 +640,148 @@ app.get('/device', async (req, res) => {
     const media = await Media.find({ token }).sort({ date_taken: -1 });
     const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(200);
 
-    res.send(`<!DOCTYPE html><html><head><title>${device?.device_model || token} - FloofTracker</title>
+    res.send(`<!DOCTYPE html><html><head>
+    <title>${device?.device_model || 'Device'} - FloofTracker</title>
     <meta http-equiv="refresh" content="30">
-    <style>${styles}</style></head><body>
+    <style>${styles}</style>
+    </head><body>
     <div class="header">
         <div>
-            <h1>${device?.device_model || 'Device'}</h1>
-            <small style="color:#aaa">Android ${device?.android_version || ''} · Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}</small>
+            <h1>📱 ${device?.device_model || 'Device'}</h1>
+            <small style="color:#aaa">Android ${device?.android_version || ''} &nbsp;·&nbsp; Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}</small>
         </div>
-        <div>
-            <button class="btn btn-primary" onclick="window.location.href='/tokens'" style="margin-right:8px">← Back</button>
+        <div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="window.location.href='/tokens'">← Back</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
     </div>
     <div class="container">
-
-        <h2>📱 App Usage</h2>
-        <div class="card" style="padding:0">
-        <table>
-            <tr><th>App</th><th>Usage</th><th>Date</th></tr>
-            ${apps.map(a => `<tr><td>${a.app_name}</td><td>${Math.round(a.usage_seconds / 60)} min</td><td>${a.usage_date}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
-        </table>
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('apps')">📱 Apps</button>
+            <button class="tab" onclick="showTab('calls')">📞 Calls</button>
+            <button class="tab" onclick="showTab('sms')">💬 SMS</button>
+            <button class="tab" onclick="showTab('gps')">📍 GPS</button>
+            <button class="tab" onclick="showTab('contacts')">👥 Contacts</button>
+            <button class="tab" onclick="showTab('media')">🖼️ Media</button>
+            <button class="tab" onclick="showTab('messages')">🔔 Messages</button>
         </div>
 
-        <h2>📞 Calls</h2>
-        <div class="card" style="padding:0">
-        <table>
-            <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th></tr>
-            ${calls.map(c => `<tr><td>${c.number}</td><td>${c.contact_name}</td><td>${c.call_type}</td><td>${c.duration_seconds}s</td><td>${new Date(c.called_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
-        </table>
+        <!-- Apps Tab -->
+        <div id="tab-apps" class="tab-content active">
+            <div class="card" style="padding:0">
+                ${apps.length === 0 ? '<p class="no-data">No app usage data</p>' : `
+                <table>
+                    <tr><th>App</th><th>Usage</th><th>Date</th></tr>
+                    ${apps.map(a => `<tr><td>${a.app_name}</td><td>${Math.round(a.usage_seconds / 60)} min</td><td>${a.usage_date}</td></tr>`).join('')}
+                </table>`}
+            </div>
         </div>
 
-        <h2>💬 SMS</h2>
-        <div class="card" style="padding:0">
-        <table>
-            <tr><th>Number</th><th>Type</th><th>Message</th><th>Date</th></tr>
-            ${sms.map(s => `<tr><td>${s.number}</td><td>${s.sms_type}</td><td>${s.message_body}</td><td>${new Date(s.received_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
-        </table>
+        <!-- Calls Tab -->
+        <div id="tab-calls" class="tab-content">
+            <div class="card" style="padding:0">
+                ${calls.length === 0 ? '<p class="no-data">No call logs</p>' : `
+                <table>
+                    <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th></tr>
+                    ${calls.map(c => `<tr>
+                        <td>${c.number}</td>
+                        <td>${c.contact_name || '-'}</td>
+                        <td>${c.call_type}</td>
+                        <td>${c.duration_seconds}s</td>
+                        <td>${new Date(c.called_at).toLocaleString()}</td>
+                    </tr>`).join('')}
+                </table>`}
+            </div>
         </div>
 
-        <h2>📍 GPS Location</h2>
-        <div class="card" style="padding:0">
-        <table>
-            <tr><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
-            ${gps.map(g => `<tr><td>${g.latitude}</td><td>${g.longitude}</td><td>${g.accuracy}m</td><td><a href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View</a></td><td>${new Date(g.received_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
-        </table>
+        <!-- SMS Tab -->
+        <div id="tab-sms" class="tab-content">
+            <div class="card" style="padding:0">
+                ${sms.length === 0 ? '<p class="no-data">No SMS messages</p>' : `
+                <table>
+                    <tr><th>Number</th><th>Type</th><th>Message</th><th>Date</th></tr>
+                    ${sms.map(s => `<tr>
+                        <td>${s.number}</td>
+                        <td>${s.sms_type}</td>
+                        <td>${s.message_body}</td>
+                        <td>${new Date(s.received_at).toLocaleString()}</td>
+                    </tr>`).join('')}
+                </table>`}
+            </div>
         </div>
 
-        <h2>👥 Contacts</h2>
-        <div class="card" style="padding:0">
-        <table>
-            <tr><th>Name</th><th>Number</th></tr>
-            ${contacts.map(c => `<tr><td>${c.name}</td><td>${c.number}</td></tr>`).join('') || '<tr><td colspan="2" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
-        </table>
+        <!-- GPS Tab -->
+        <div id="tab-gps" class="tab-content">
+            <div class="card" style="padding:0">
+                ${gps.length === 0 ? '<p class="no-data">No GPS data yet</p>' : `
+                <table>
+                    <tr><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
+                    ${gps.map(g => `<tr>
+                        <td>${g.latitude}</td>
+                        <td>${g.longitude}</td>
+                        <td>${g.accuracy}m</td>
+                        <td><a href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View</a></td>
+                        <td>${new Date(g.received_at).toLocaleString()}</td>
+                    </tr>`).join('')}
+                </table>`}
+            </div>
         </div>
 
-        <h2>🖼️ Media & Screenshots</h2>
-        <div class="card" style="padding:0">
-        <table>
-            <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Size</th><th>Date</th></tr>
-            ${media.map(m => `<tr>
-                <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}"/>` : 'No preview'}</td>
-                <td>${m.filename}</td>
-                <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
-                <td>${Math.round(m.size_bytes / 1024)}KB</td>
-                <td>${new Date(m.date_taken).toLocaleString()}</td>
-            </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
-        </table>
+        <!-- Contacts Tab -->
+        <div id="tab-contacts" class="tab-content">
+            <div class="card" style="padding:0">
+                ${contacts.length === 0 ? '<p class="no-data">No contacts</p>' : `
+                <table>
+                    <tr><th>Name</th><th>Number</th></tr>
+                    ${contacts.map(c => `<tr><td>${c.name}</td><td>${c.number}</td></tr>`).join('')}
+                </table>`}
+            </div>
         </div>
 
-        <h2>🔔 Instant Messages</h2>
-        <div class="card" style="padding:0">
-        <table>
-            <tr><th>App</th><th>Sender</th><th>Message</th><th>Date</th></tr>
-            ${notifications.map(n => `<tr><td>${n.app}</td><td>${n.sender}</td><td>${n.message}</td><td>${new Date(n.received_at).toLocaleString()}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#888;padding:20px">No data</td></tr>'}
-        </table>
+        <!-- Media Tab -->
+        <div id="tab-media" class="tab-content">
+            <div class="card" style="padding:0">
+                ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
+                <table>
+                    <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Size</th><th>Date</th></tr>
+                    ${media.map(m => `<tr>
+                        <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}"/>` : 'No preview'}</td>
+                        <td>${m.filename}</td>
+                        <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+                        <td>${Math.round(m.size_bytes / 1024)}KB</td>
+                        <td>${new Date(m.date_taken).toLocaleString()}</td>
+                    </tr>`).join('')}
+                </table>`}
+            </div>
+        </div>
+
+        <!-- Instant Messages Tab -->
+        <div id="tab-messages" class="tab-content">
+            <div class="card" style="padding:0">
+                ${notifications.length === 0 ? '<p class="no-data">No instant messages captured</p>' : `
+                <table>
+                    <tr><th>App</th><th>Sender</th><th>Message</th><th>Date</th></tr>
+                    ${notifications.map(n => `<tr>
+                        <td>${n.app}</td>
+                        <td>${n.sender}</td>
+                        <td>${n.message}</td>
+                        <td>${new Date(n.received_at).toLocaleString()}</td>
+                    </tr>`).join('')}
+                </table>`}
+            </div>
         </div>
 
     </div>
     <script>
         if (!localStorage.getItem('employer_id')) window.location.href = '/';
         function logout() { localStorage.clear(); window.location.href = '/'; }
+
+        function showTab(name) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            event.target.classList.add('active');
+        }
     </script>
     </body></html>`);
 });
