@@ -766,14 +766,14 @@ app.get('/device', async (req, res) => {
         ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
         <table>
             <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
-            ${media.map(m => `<tr>
-                <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" onclick="openLightbox('data:image/jpeg;base64,${m.thumbnail}')"/>` : 'No preview'}</td>
-                <td>${m.filename}</td>
-                <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
-                <td>${Math.round(m.size_bytes / 1024)}KB</td>
-                <td>${new Date(m.date_taken).toLocaleString()}</td>
-                <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
-            </tr>`).join('')}
+          ${media.map(m => `<tr>
+    <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : 'No preview'}</td>
+    <td>${m.filename}</td>
+    <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+    <td>${Math.round(m.size_bytes / 1024)}KB</td>
+    <td>${new Date(m.date_taken).toLocaleString()}</td>
+    <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
+</tr>`).join('')}
         </table>`}
     </div>
 </div>
@@ -810,6 +810,14 @@ app.get('/device', async (req, res) => {
             document.getElementById('tab-' + name).classList.add('active');
             event.target.classList.add('active');
         }
+
+function openLightbox(img) {
+    document.getElementById('lightbox-img').src = img.dataset.src;
+    document.getElementById('lightbox').style.display = 'flex';
+}
+function closeLightbox() {
+    document.getElementById('lightbox').style.display = 'none';
+}
 
 async function requestDownload(token, filename, image_id) {
     const btn = event.target;
