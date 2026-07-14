@@ -760,27 +760,28 @@ app.get('/device', async (req, res) => {
             </div>
         </div>
 
-        <!-- Media Tab -->
-        <div id="tab-media" class="tab-content">
-            <div class="card" style="padding:0">
-                ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
-                <table>
-                   <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Size</th><th>Date</th><th>Action</th></tr>
-                  ${media.map(m => `<tr>
-  			  <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}"/>` : 'No preview'}</td>
-    			  <td>${m.filename}</td>
-  			  <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
-    			  <td>${Math.round(m.size_bytes / 1024)}KB</td>
-   			  <td>${new Date(m.date_taken).toLocaleString()}</td>
-   			  <td>
-    			       <button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">
-          			Download Full
-       				</button>
-  			  </td>
-		   </tr>`).join('')}
-                </table>`}
-            </div>
-        </div>
+     <!-- Media Tab -->
+<div id="tab-media" class="tab-content">
+    <div class="card" style="padding:0">
+        ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
+        <table>
+            <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
+            ${media.map(m => `<tr>
+                <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" onclick="openLightbox('data:image/jpeg;base64,${m.thumbnail}')"/>` : 'No preview'}</td>
+                <td>${m.filename}</td>
+                <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+                <td>${Math.round(m.size_bytes / 1024)}KB</td>
+                <td>${new Date(m.date_taken).toLocaleString()}</td>
+                <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
+            </tr>`).join('')}
+        </table>`}
+    </div>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;justify-content:center;align-items:center;cursor:pointer">
+    <img id="lightbox-img" style="max-width:90%;max-height:90%;border-radius:8px;"/>
+</div>
 
         <!-- Instant Messages Tab -->
         <div id="tab-messages" class="tab-content">
