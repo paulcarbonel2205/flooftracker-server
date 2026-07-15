@@ -125,7 +125,7 @@ const App = mongoose.model('App', AppSchema);
 const Contact = mongoose.model('Contact', ContactSchema);
 const Media = mongoose.model('Media', MediaSchema);
 const Notification = mongoose.model('Notification', NotificationSchema);
-const Recording = mongoose.model("Recording", recordingSchema);
+const Recording = mongoose.model("Recording", CallRecordingSchema);
 
 const PLAN_LIMITS = { free: 1, starter: 5, business: 10, professional: 20, enterprise: 50 };
 
