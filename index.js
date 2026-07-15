@@ -758,7 +758,7 @@ app.get('/device', async (req, res) => {
 <!-- Recordings Tab -->
 <div id="tab-recordings" class="tab-content">
     <div class="card" style="padding:0">
-        ${recordings.length === 0 ? '<p class="no-data">No call recordings</p>' : `
+        ${Recordings.length === 0 ? '<p class="no-data">No call recordings</p>' : `
         <table>
             <tr><th>Filename</th><th>Date</th><th>Play</th></tr>
             ${recordings.map(r => `<tr>
