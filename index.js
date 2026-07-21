@@ -874,6 +874,13 @@ function closeLightbox() {
     document.getElementById('lightbox').style.display = 'none';
 }
 
+function showTab(name) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+}
+
 // Messages navigation
 const allNotifications = ${JSON.stringify(notifications)};
 let currentApp = '';
