@@ -904,7 +904,8 @@ function showChats(app) {
     list.innerHTML = senders.map(sender => {
         const msgs = appMessages.filter(n => n.sender === sender);
         const latest = msgs[0];
-        return `<div onclick="showMessages('${sender.replace(/'/g, "\\'")}')" 
+        const safeSender = sender.replace(/'/g, '&#39;');
+	return `<div onclick="showMessages('${safeSender}')"
             style="padding:14px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;align-items:center"
             onmouseover="this.style.background='#f9f9f9'" onmouseout="this.style.background=''">
             <div>
