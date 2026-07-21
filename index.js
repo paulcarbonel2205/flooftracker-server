@@ -859,13 +859,6 @@ app.get('/device', async (req, res) => {
         if (!localStorage.getItem('employer_id')) window.location.href = '/';
         function logout() { localStorage.clear(); window.location.href = '/'; }
 
-        function showTab(name) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById('tab-' + name).classList.add('active');
-            event.target.classList.add('active');
-        }
-
 function openLightbox(img) {
     document.getElementById('lightbox-img').src = img.dataset.src;
     document.getElementById('lightbox').style.display = 'flex';
