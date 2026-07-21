@@ -891,7 +891,6 @@ function showChats(app) {
     document.getElementById('msg-level-messages').style.display = 'none';
     document.getElementById('chats-title').textContent = app + ' - Chats';
 
-    // Get unique senders for this app
     const appMessages = allNotifications.filter(n => n.app === app);
     const senders = [...new Set(appMessages.map(n => n.sender))];
 
@@ -901,24 +900,24 @@ function showChats(app) {
         return;
     }
 
-    list.innerHTML = senders.map(sender => {
-        const msgs = appMessages.filter(n => n.sender === sender);
+    list.innerHTML = senders.map(function(sender) {
+        const msgs = appMessages.filter(function(n) { return n.sender === sender; });
         const latest = msgs[0];
         const safeSender = sender.replace(/'/g, '&#39;');
-	return `<div onclick="showMessages('${safeSender}')"
-            style="padding:14px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;align-items:center"
-            onmouseover="this.style.background='#f9f9f9'" onmouseout="this.style.background=''">
-            <div>
-                <div style="font-weight:bold;color:#1a1a2e">${sender}</div>
-                <div style="color:#888;font-size:12px;margin-top:2px">${latest?.message?.substring(0,50) || ''}...</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0;margin-left:12px">
-                <div style="color:#888;font-size:11px">${latest ? new Date(latest.received_at).toLocaleString() : ''}</div>
-                <div style="background:#1a1a2e;color:white;border-radius:10px;padding:2px 8px;font-size:11px;margin-top:4px">${msgs.length} msgs</div>
-            </div>
-        </div>`;
+        const latestMsg = latest ? latest.message.substring(0, 50) : '';
+        const latestDate = latest ? new Date(latest.received_at).toLocaleString() : '';
+        return '<div onclick="showMessages(\'' + safeSender + '\')" '
+            + 'style="padding:14px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;align-items:center" '
+            + 'onmouseover="this.style.background=\'#f9f9f9\'" onmouseout="this.style.background=\'\'"><div>'
+            + '<div style="font-weight:bold;color:#1a1a2e">' + sender + '</div>'
+            + '<div style="color:#888;font-size:12px;margin-top:2px">' + latestMsg + '...</div>'
+            + '</div><div style="text-align:right;flex-shrink:0;margin-left:12px">'
+            + '<div style="color:#888;font-size:11px">' + latestDate + '</div>'
+            + '<div style="background:#1a1a2e;color:white;border-radius:10px;padding:2px 8px;font-size:11px;margin-top:4px">' + msgs.length + ' msgs</div>'
+            + '</div></div>';
     }).join('');
 }
+
 
 function showChatsBack() {
     document.getElementById('msg-level-chats').style.display = 'block';
@@ -931,22 +930,20 @@ function showMessages(sender) {
     document.getElementById('messages-title').textContent = sender;
 
     const msgs = allNotifications
-        .filter(n => n.app === currentApp && n.sender === sender)
-        .sort((a, b) => new Date(a.received_at) - new Date(b.received_at));
+        .filter(function(n) { return n.app === currentApp && n.sender === sender; })
+        .sort(function(a, b) { return new Date(a.received_at) - new Date(b.received_at); });
 
     const list = document.getElementById('messages-list');
-    list.innerHTML = msgs.map(m => `
-        <div style="padding:10px 14px;border-bottom:1px solid #eee">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start">
-                <div style="background:#f0f2ff;border-radius:8px;padding:8px 12px;max-width:75%">
-                    <div style="color:#1a1a2e;font-size:14px">${m.message}</div>
-                </div>
-                <div style="color:#888;font-size:11px;margin-left:8px;flex-shrink:0">${new Date(m.received_at).toLocaleString()}</div>
-            </div>
-        </div>
-    `).join('');
+    list.innerHTML = msgs.map(function(m) {
+        return '<div style="padding:10px 14px;border-bottom:1px solid #eee">'
+            + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+            + '<div style="background:#f0f2ff;border-radius:8px;padding:8px 12px;max-width:75%">'
+            + '<div style="color:#1a1a2e;font-size:14px">' + m.message + '</div>'
+            + '</div>'
+            + '<div style="color:#888;font-size:11px;margin-left:8px;flex-shrink:0">' + new Date(m.received_at).toLocaleString() + '</div>'
+            + '</div></div>';
+    }).join('');
 
-    // Scroll to bottom
     list.scrollTop = list.scrollHeight;
 }
 
