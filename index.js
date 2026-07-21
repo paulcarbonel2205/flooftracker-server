@@ -875,7 +875,7 @@ function showTab(name, el) {
 }
 
 // Messages navigation
-const allNotifications = JSON.parse(${JSON.stringify(JSON.stringify(notifications))});
+const allNotifications = [];
 let currentApp = '';
 
 function showApps() {
