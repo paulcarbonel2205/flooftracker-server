@@ -821,18 +821,20 @@ app.get('/device', async (req, res) => {
     <div class="card">
         <!-- Level 1: App selector -->
         <div id="msg-level-apps">
-            <h3 style="margin-bottom:16px;color:#1a1a2e">Messaging Apps</h3>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
-                ${['Messenger','WhatsApp','Telegram'].map(app => {
-                    const count = notifications.filter(n => n.app === app).length;
-                    return `<div onclick="showChats('${app}')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" onmouseover="this.style.borderColor='#1a1a2e'" onmouseout="this.style.borderColor='#eee'">
-                        <div style="font-size:28px;margin-bottom:8px">${app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️'}</div>
-                        <div style="font-weight:bold;color:#1a1a2e">${app}</div>
-                        <div style="color:#888;font-size:12px;margin-top:4px">${count} messages</div>
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>
+    <h3 style="margin-bottom:16px;color:#1a1a2e">Messaging Apps</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        ${['Messenger','WhatsApp','Telegram'].map(function(app) {
+            const count = notifications.filter(function(n) { return n.app === app; }).length;
+            const icon = app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️';
+            return '<div onclick="showChats(\'' + app + '\')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" '
+                + 'onmouseover="this.style.borderColor=\'#1a1a2e\'" onmouseout="this.style.borderColor=\'#eee\'">'
+                + '<div style="font-size:28px;margin-bottom:8px">' + icon + '</div>'
+                + '<div style="font-weight:bold;color:#1a1a2e">' + app + '</div>'
+                + '<div style="color:#888;font-size:12px;margin-top:4px">' + count + ' messages</div>'
+                + '</div>';
+        }).join('')}
+    </div>
+</div>
 
         <!-- Level 2: Chats list -->
         <div id="msg-level-chats" style="display:none">
