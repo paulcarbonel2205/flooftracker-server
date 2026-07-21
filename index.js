@@ -702,13 +702,13 @@ app.get('/device', async (req, res) => {
     </div>
     <div class="container">
         <div class="tabs">
-            <button class="tab active" onclick="showTab('apps')">📱 Apps</button>
-            <button class="tab" onclick="showTab('calls')">📞 Calls</button>
-            <button class="tab" onclick="showTab('sms')">💬 SMS</button>
-            <button class="tab" onclick="showTab('gps')">📍 GPS</button>
-            <button class="tab" onclick="showTab('contacts')">👥 Contacts</button>
-            <button class="tab" onclick="showTab('media')">🖼️ Media</button>
-            <button class="tab" onclick="showTab('messages')">🔔 Messages</button>
+       <button class="tab active" onclick="showTab('apps', this)">📱 Apps</button>
+<button class="tab" onclick="showTab('calls', this)">📞 Calls</button>
+<button class="tab" onclick="showTab('sms', this)">💬 SMS</button>
+<button class="tab" onclick="showTab('gps', this)">📍 GPS</button>
+<button class="tab" onclick="showTab('contacts', this)">👥 Contacts</button>
+<button class="tab" onclick="showTab('media', this)">🖼️ Media</button>
+<button class="tab" onclick="showTab('messages', this)">🔔 Messages</button>
         </div>
 
         <!-- Apps Tab -->
@@ -867,15 +867,15 @@ function closeLightbox() {
     document.getElementById('lightbox').style.display = 'none';
 }
 
-function showTab(name) {
+function showTab(name, el) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
-    event.target.classList.add('active');
+    el.classList.add('active');
 }
 
 // Messages navigation
-const allNotifications = ${JSON.stringify(notifications)};
+const allNotifications = ${JSON.stringify(notifications).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026')};
 let currentApp = '';
 
 function showApps() {
