@@ -877,7 +877,12 @@ function showTab(name, el) {
 }
 
 // Messages navigation
-const allNotifications = [];
+let allNotifications = [];
+
+// Fetch notifications via API
+fetch('/device/notifications-data?token=${token}')
+    .then(r => r.json())
+    .then(data => { allNotifications = data.notifications || []; });
 let currentApp = '';
 
 function showApps() {
@@ -1041,6 +1046,13 @@ app.post('/employer/download-full', async (req, res) => {
     } catch (e) {
         res.json({ success: false, message: e.message });
     }
+});
+
+// notification data is never injected directly into the HTML
+app.get('/device/notifications-data', async (req, res) => {
+    const token = req.query.token;
+    const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(500);
+    res.json({ notifications });
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
