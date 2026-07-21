@@ -875,7 +875,7 @@ function showTab(name, el) {
 }
 
 // Messages navigation
-const allNotifications = ${JSON.stringify(notifications).replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026')};
+const allNotifications = JSON.parse(${JSON.stringify(JSON.stringify(notifications))});
 let currentApp = '';
 
 function showApps() {
