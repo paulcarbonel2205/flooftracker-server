@@ -368,8 +368,18 @@ app.post('/device/media', async (req, res) => {
 app.post('/device/notifications', async (req, res) => {
     try {
         const token = getToken(req);
-        await Notification.create({ token, ...req.body, received_at: new Date() });
-        console.log(`Notification from ${token}`);
+        const { app, sender, chat_id, message, received_at } = req.body;
+        
+        // Check if exact message already exists for this sender
+        const existing = await Notification.findOne({ 
+            token, app, sender, message
+        });
+        
+        if (!existing) {
+            await Notification.create({ token, ...req.body, received_at: new Date() });
+            console.log(`Notification from ${token}: ${app} - ${sender}`);
+        }
+        
         res.json({ success: true });
     } catch (e) {
         res.json({ success: false, message: e.message });
