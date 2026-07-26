@@ -74,7 +74,8 @@ function showMessages(sender) {
     document.getElementById('messages-title').textContent = sender;
 
     const msgs = allNotifications
-        .filter(function(n) { return n.app === currentApp && n.sender === sender; })
+    .filter(function(n) { return n.app === currentApp && n.sender === sender; })
+    .sort(function(a, b) { return new Date(a.received_at) - new Date(b.received_at); });
         .sort(function(a, b) { return new Date(a.received_at) - new Date(b.received_at); });
 
     const list = document.getElementById('messages-list');

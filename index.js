@@ -501,16 +501,16 @@ app.get('/welcome', (req, res) => {
     <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()">Logout</button></div>
     <div class="container">
         <div class="card" style="text-align:center;padding:40px">
-            <h2 style="color:#1a1a2e;margin-bottom:10px">Welcome to FloofTracker 👋</h2>
+            <h2 style="color:#1a1a2e;margin-bottom:10px">Welcome to FloofTracker </h2>
             <p style="color:#888;margin-bottom:30px">Here's what you can monitor on your employees' devices</p>
             <div class="feature-grid">
-                <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking every 5 minutes</p></div>
-                <div class="feature-item"><div class="icon">📞</div><h4>Call Logs</h4><p>Incoming, outgoing and missed calls with duration</p></div>
-                <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
-                <div class="feature-item"><div class="icon">📱</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
-                <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
-                <div class="feature-item"><div class="icon">🖼️</div><h4>Photos & Screenshots</h4><p>Thumbnail previews of all captured media</p></div>
-                <div class="feature-item"><div class="icon">🔔</div><h4>Instant Messages</h4><p>Facebook, Instagram, WhatsApp, Viber and more</p></div>
+                <div class="feature-item"><div class="icon"></div><h4>GPS Location</h4><p>Real-time location tracking every 5 minutes</p></div>
+                <div class="feature-item"><div class="icon"></div><h4>Call Logs</h4><p>Incoming, outgoing and missed calls with duration</p></div>
+                <div class="feature-item"><div class="icon"></div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
+                <div class="feature-item"><div class="icon"></div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
+                <div class="feature-item"><div class="icon"></div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
+                <div class="feature-item"><div class="icon"></div><h4>Photos & Screenshots</h4><p>Thumbnail previews of all captured media</p></div>
+                <div class="feature-item"><div class="icon"></div><h4>Instant Messages</h4><p>Facebook, Instagram, WhatsApp, Viber and more</p></div>
             </div>
             <button class="btn btn-primary" onclick="window.location.href='/plans'" style="margin-top:30px;padding:14px 40px;font-size:15px">Choose a Plan →</button>
         </div>
@@ -546,7 +546,7 @@ app.get('/plans', (req, res) => {
                     <button class="btn btn-primary">Select</button>
                 </div>
                 <div class="plan-card popular" onclick="selectPlan('business')">
-                    <h3>Business ⭐</h3>
+                    <h3>Business </h3>
                     <div class="price">Coming Soon</div>
                     <div class="devices">10 devices</div>
                     <button class="btn btn-primary">Select</button>
@@ -713,13 +713,13 @@ app.get('/device', async (req, res) => {
     </div>
     <div class="container">
         <div class="tabs">
-       <button class="tab active" onclick="showTab('apps', this)">📱 Apps</button>
-<button class="tab" onclick="showTab('calls', this)">📞 Calls</button>
-<button class="tab" onclick="showTab('sms', this)">💬 SMS</button>
-<button class="tab" onclick="showTab('gps', this)">📍 GPS</button>
-<button class="tab" onclick="showTab('contacts', this)">👥 Contacts</button>
-<button class="tab" onclick="showTab('media', this)">🖼️ Media</button>
-<button class="tab" onclick="showTab('messages', this)">🔔 Messages</button>
+       <button class="tab active" onclick="showTab('apps', this)"> Apps</button>
+<button class="tab" onclick="showTab('calls', this)"> Calls</button>
+<button class="tab" onclick="showTab('sms', this)"> SMS</button>
+<button class="tab" onclick="showTab('gps', this)"> GPS</button>
+<button class="tab" onclick="showTab('contacts', this)"> Contacts</button>
+<button class="tab" onclick="showTab('media', this)"> Media</button>
+<button class="tab" onclick="showTab('messages', this)"> Messages</button>
         </div>
 
         <!-- Apps Tab -->
