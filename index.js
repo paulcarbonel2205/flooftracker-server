@@ -752,7 +752,6 @@ app.get('/tokens', (req, res) => {
 // Per-device dashboard with tabs
 app.get('/device', async (req, res) => {
     const token = req.query.token;
-    const token = req.query.token;
     if (!token) return res.redirect('/tokens');
 
     const device = await Device.findOne({ token });
