@@ -1030,8 +1030,10 @@ app.get('/device/notifications-data', async (req, res) => {
 // Employer sends command
 app.post('/employer/command', async (req, res) => {
     try {
-        const { token, type, duration } = req.body;
-        const command = await Command.create({ token, type, duration: duration || 30 });
+        const { token, type, duration, facing } = req.body;
+        console.log('Command received:', { token, type, duration, facing }); // ← add this
+        const command = await Command.create({ token, type, duration: duration || 30, facing: facing || 'back' });
+        console.log('Command created:', command);
         res.json({ success: true, command_id: command._id });
     } catch (e) {
         res.json({ success: false, message: e.message });

