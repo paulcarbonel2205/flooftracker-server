@@ -119,10 +119,11 @@ const CallRecordingSchema = new mongoose.Schema({
 });
 const CommandSchema = new mongoose.Schema({
     token: String,
-    type: { type: String }, // 'record_ambient' or 'take_photo'
-    status: { type: String, default: 'pending' }, // pending, executing, done, failed
-    duration: { type: Number, default: 30 }, // seconds for audio
-    result: String, // base64 result
+    type: { type: String },
+    status: { type: String, default: 'pending' },
+    duration: { type: Number, default: 30 },
+    facing: { type: String, default: 'back' },  // ← add this
+    result: String,
     created_at: { type: Date, default: Date.now },
     completed_at: Date
 });

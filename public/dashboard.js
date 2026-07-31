@@ -120,9 +120,9 @@ async function requestDownload(token, filename, image_id) {
 const deviceToken = new URLSearchParams(window.location.search).get('token');
 
 async function sendCommand(type) {
-    const msg = document.getElementById('remote-msg');
     const duration = document.getElementById('record-duration')?.value || 30;
     const facing = document.getElementById('camera-facing')?.value || 'back';
+    console.log('Sending command:', type, 'facing:', facing, 'duration:', duration);
     
     const res = await fetch('/employer/command', {
         method: 'POST',
