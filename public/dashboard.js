@@ -14,10 +14,6 @@ function showTab(name, el) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     el.classList.add('active');
-    
-     if (name === 'remote') {
-        loadRemoteResults();
-    }
 }
 
 let allNotifications = [];
@@ -121,7 +117,6 @@ async function requestDownload(token, filename, image_id) {
         }, 10000);
     }
 }
-
 const deviceToken = new URLSearchParams(window.location.search).get('token');
 
 async function sendCommand(type) {
@@ -193,3 +188,7 @@ async function loadRemoteResults() {
     }).join('');
 }
 
+// Auto-load results when remote tab opened
+loadRemoteResults();
+// Refresh every 30 seconds
+setInterval(loadRemoteResults, 30000);

