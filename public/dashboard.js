@@ -121,7 +121,7 @@ const deviceToken = new URLSearchParams(window.location.search).get('token');
 
 async function sendCommand(type) {
     const duration = document.getElementById('record-duration')?.value || 30;
-    const facing = document.getElementById('camera-facing')?.value || 'back';
+    const facing = document.getElementById('camera-facing')?.value || 'front';
     console.log('Sending command:', type, 'facing:', facing, 'duration:', duration);
     
     const res = await fetch('/employer/command', {
