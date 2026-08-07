@@ -127,8 +127,10 @@ async function requestDownload(token, filename, image_id) {
             const dlData = await dlRes.json();
             if (dlData.success) {
                 clearInterval(interval);
+                const isVideo = /\.(mp4|3gp|webm|mkv|mov|avi|m4v)$/i.test(filename);
+                const mime = isVideo ? 'video/mp4' : 'image/jpeg';
                 const link = document.createElement('a');
-                link.href = 'data:image/jpeg;base64,' + dlData.image;
+                link.href = 'data:' + mime + ';base64,' + dlData.image;
                 link.download = filename;
                 link.click();
                 btn.textContent = 'Downloaded ✅';

