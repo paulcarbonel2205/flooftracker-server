@@ -27,12 +27,80 @@ app.use((req, res, next) => {
 
 // Signed, httpOnly session cookie. Set SESSION_SECRET to a long random string
 // in the environment; without it sessions are regenerated on every restart.
+// Mongo-backed session store: express-session's default MemoryStore is not
+// meant for production (sessions live in RAM, are lost on every restart, and
+// never expire). Storing sessions in MongoDB reuses the existing mongoose
+// connection, and a TTL index makes MongoDB delete expired sessions on its own.
+class MongoSessionStore extends session.Store {
+    constructor(getDb) {
+        super();
+        this.getDb = getDb;
+        this._col = null;
+    }
+
+    collection() {
+        if (this._col) return this._col;
+        const db = this.getDb();
+        if (!db) return null;
+        this._col = db.collection('sessions');
+        // Auto-delete expired sessions.
+        this._col.createIndex({ expires: 1 }, { expireAfterSeconds: 0 }).catch(() => {});
+        return this._col;
+    }
+
+    get(sid, cb) {
+        const col = this.collection();
+        if (!col) return cb(new Error('Database not connected yet'));
+        col.findOne({ _id: sid })
+            .then(doc => {
+                if (!doc) return cb(null, null);
+                if (doc.expires && doc.expires.getTime() < Date.now()) return cb(null, null);
+                cb(null, doc.session);
+            })
+            .catch(err => cb(err));
+    }
+
+    set(sid, sess, cb) {
+        const col = this.collection();
+        if (!col) return cb(new Error('Database not connected yet'));
+        col.updateOne(
+            { _id: sid },
+            { $set: { session: sess, expires: sessionExpiry(sess) } },
+            { upsert: true }
+        )
+            .then(() => cb(null))
+            .catch(err => cb(err));
+    }
+
+    destroy(sid, cb) {
+        const col = this.collection();
+        if (!col) return cb(new Error('Database not connected yet'));
+        col.deleteOne({ _id: sid })
+            .then(() => cb(null))
+            .catch(err => cb(err));
+    }
+
+    touch(sid, sess, cb) {
+        const col = this.collection();
+        if (!col) return cb(new Error('Database not connected yet'));
+        col.updateOne({ _id: sid }, { $set: { expires: sessionExpiry(sess) } })
+            .then(() => cb(null))
+            .catch(err => cb(err));
+    }
+}
+
+function sessionExpiry(sess) {
+    if (sess && sess.cookie && sess.cookie.expires) return new Date(sess.cookie.expires);
+    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);  // fallback: 7 days
+}
+
 app.use(session({
     name: 'flooftracker.sid',
     secret: process.env.SESSION_SECRET || (() => {
         console.warn('WARNING: SESSION_SECRET is not set — sessions will not survive restarts.');
         return crypto.randomBytes(32).toString('hex');
     })(),
+    store: new MongoSessionStore(() => mongoose.connection.db),
     resave: false,
     saveUninitialized: false,
     cookie: {
