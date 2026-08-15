@@ -960,7 +960,7 @@ app.get('/', (req, res) => {
             </div>
         </div>
     </div>
-    <div class="footer">© 2026 FloofTracker · Employee monitoring made simple</div>
+    <div class="footer">© 2026 FloofTracker · Employee monitoring made simple · <a href="/terms" style="color:#9ca3af">Terms of Service</a> · <a href="/privacy" style="color:#9ca3af">Privacy Policy</a></div>
     <script>
         function goDashboard() { window.location.href = '${dashboardHref}'; }
     </script>
@@ -1011,6 +1011,120 @@ app.get('/login', (req, res) => {
         }
     </script>
     </body></html>`);
+});
+
+// ── Legal pages (public) ────────────────────────────────────────────────────
+// NOTE: These are informational templates, not legal advice. Have them reviewed
+// by counsel before relying on them in production.
+function renderLegal(title, updated, sections) {
+    return `<!DOCTYPE html><html><head><title>${title} - FloofTracker</title><style>
+    ${styles}
+    .legal { max-width: 820px; margin: 26px auto; padding: 0 20px; }
+    .legal h2 { color:#1a1a2e; margin-bottom:6px; }
+    .legal .updated { color:#9ca3af; font-size:12.5px; margin-bottom:24px; }
+    .legal h3 { color:#1a1a2e; font-size:16px; margin:22px 0 8px; }
+    .legal p { color:#4b5563; font-size:14px; line-height:1.65; margin-bottom:10px; }
+    .legal ul { margin: 6px 0 12px 22px; }
+    .legal li { color:#4b5563; font-size:14px; line-height:1.65; margin-bottom:6px; }
+    </style></head><body>
+    <div class="header">
+        <h1>🐾 FloofTracker</h1>
+        <button class="btn btn-outline" onclick="window.location.href='/'">← Back to home</button>
+    </div>
+    <div class="legal">
+        <div class="card">
+            <h2>${title}</h2>
+            <div class="updated">Last updated: ${updated}</div>
+            ${sections.map(s => `<h3>${s.h}</h3>${s.p.map(p => `<p>${p}</p>`).join('')}${s.list ? `<ul>${s.list.map(i => `<li>${i}</li>`).join('')}</ul>` : ''}`).join('')}
+        </div>
+    </div>
+    </body></html>`;
+}
+
+app.get('/terms', (req, res) => {
+    res.send(renderLegal('Terms of Service', 'August 15, 2026', [
+        { h: '1. Agreement', p: [
+            'By creating an account or using FloofTracker (the "Service"), you agree to these Terms of Service. If you are using the Service on behalf of an organization, you confirm that you have authority to bind that organization to these terms.'
+        ]},
+        { h: '2. The Service', p: [
+            'FloofTracker provides a web dashboard and a companion Android app that let employers monitor company-owned or employer-authorized devices, including location, call logs and recordings, SMS messages, app usage, contacts, media, instant messages, and remote commands such as ambient audio recording and photo capture.'
+        ]},
+        { h: '3. Your responsibilities', p: [
+            'You are solely responsible for how you use the Service. Before monitoring any device you must:'
+        ], list: [
+            'Own the device or have the legal right to monitor it',
+            'Obtain any required consent from, and provide proper notice to, the device user (this may include consent to call recording and other surveillance, which is regulated in many jurisdictions)',
+            'Comply with all applicable laws, including labor, privacy, wiretap, and recording-consent laws'
+        ]},
+        { h: '4. Accounts & security', p: [
+            'You are responsible for safeguarding your account credentials and device tokens. Notify us immediately if you suspect unauthorized access to your account or any monitored device.'
+        ]},
+        { h: '5. Prohibited conduct', p: [
+            'You may not use the Service to engage in illegal surveillance, to monitor devices you have no right to monitor, to circumvent rate limits or security controls, to reverse engineer the Service, or to otherwise violate the law or the rights of others.'
+        ]},
+        { h: '6. Plans & fees', p: [
+            'The Service offers a free plan and paid plans (currently coming soon). We may change plan features, limits, or pricing with reasonable notice. All plans include all monitoring features.'
+        ]},
+        { h: '7. Termination', p: [
+            'You may stop using the Service and delete your devices or account at any time. We may suspend or terminate access for violations of these terms, illegal use, or abuse of the Service. Removing a device permanently deletes the data associated with it.'
+        ]},
+        { h: '8. Disclaimers', p: [
+            'The Service is provided "as is" and "as available" without warranties of any kind, express or implied, including accuracy, reliability, availability, or fitness for a particular purpose. Monitoring data may be incomplete, delayed, or unavailable.'
+        ]},
+        { h: '9. Limitation of liability', p: [
+            'To the maximum extent permitted by law, FloofTracker shall not be liable for indirect, incidental, special, consequential, or punitive damages, or for any damages arising from your use of, or inability to use, the Service or from data collected through it.'
+        ]},
+        { h: '10. Changes to these terms', p: [
+            'We may update these Terms of Service from time to time. Continued use of the Service after changes take effect constitutes acceptance of the updated terms.'
+        ]},
+        { h: '11. Contact', p: [
+            'Questions about these terms can be sent to the account owner or the support contact listed on the dashboard.'
+        ]}
+    ]));
+});
+
+app.get('/privacy', (req, res) => {
+    res.send(renderLegal('Privacy Policy', 'August 15, 2026', [
+        { h: '1. Overview', p: [
+            'This Privacy Policy explains what information FloofTracker collects, how it is used, and the choices available to you. The Service is designed for employers to monitor devices they own or are authorized to monitor.'
+        ]},
+        { h: '2. Information we collect', p: [
+            'Account information: email address and a securely hashed password, plus your selected plan.'
+        ]},
+        { h: '3. Device data', p: [
+            'With a device enrolled under your account, the Service collects:',
+        ], list: [
+            'GPS location and accuracy',
+            'Call logs and audio recordings of calls',
+            'SMS messages (sent and received)',
+            'App usage statistics',
+            'Contacts list',
+            'Photos and screenshots',
+            'Instant messaging notifications from apps such as Messenger, WhatsApp, and Telegram',
+            'Ambient audio recordings and photos captured via remote commands'
+        ]},
+        { h: '4. How we use this information', p: [
+            'Device data is displayed in your private dashboard so you can monitor enrolled devices. We use account information to run the Service, enforce plan limits, and communicate about your account. We do not sell your data or the data of monitored devices.'
+        ]},
+        { h: '5. Consent & notice', p: [
+            'You are responsible for obtaining any legally required consent from device users and for notifying them that the device is monitored, including that calls may be recorded and that the microphone and camera may be used. Recording conversations and other surveillance is regulated in many jurisdictions; it is your responsibility to comply.'
+        ]},
+        { h: '6. Storage & retention', p: [
+            'Data is stored on our servers (a hosted MongoDB database) and kept while the device remains active on your account. Removing a device from your account permanently deletes its data, including recordings and media. We retain account records as needed to provide the Service and comply with law.'
+        ]},
+        { h: '7. Security', p: [
+            'Passwords are stored as bcrypt hashes, sessions use signed HTTP-only cookies, device access uses per-device secret tokens, and data is transmitted over HTTPS in production. No method of transmission or storage is completely secure.'
+        ]},
+        { h: '8. Sharing & legal requests', p: [
+            'We do not share your data with third parties except as required by law, legal process, or to protect the rights and safety of FloofTracker, its users, or the public.'
+        ]},
+        { h: '9. Your choices', p: [
+            'You can remove monitored devices from your dashboard at any time, which deletes their data. You may also stop using the Service and request deletion of your account by contacting support.'
+        ]},
+        { h: '10. Changes to this policy', p: [
+            'We may update this Privacy Policy as the Service evolves. We will post any changes here, and continued use of the Service after changes take effect constitutes acceptance.'
+        ]}
+    ]));
 });
 
 app.get('/register', (req, res) => {
