@@ -463,6 +463,13 @@ const styles = `
     /* Remote control */
     .subtext { color: #757575; font-size: 13px; margin-bottom: 20px; }
     .section-title { color: #212121; margin-bottom: 14px; font-size: 15px; font-weight: 500; }
+    .remote-status { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 2px; margin-bottom: 20px; font-size: 13.5px; line-height: 1.5; }
+    .remote-status .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .remote-status.online { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
+    .remote-status.online .dot { background: #4CAF50; }
+    .remote-status.offline { background: #EEEEEE; color: #616161; border: 1px solid #E0E0E0; }
+    .remote-status.offline .dot { background: #9e9e9e; }
+    .remote-status b { font-weight: 500; }
     .remote-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
     .remote-card { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 2px; padding: 22px 20px; text-align: center; transition: box-shadow .18s ease, border-color .18s ease; }
     .remote-card:hover { border-color: #bdbdbd; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
@@ -642,6 +649,23 @@ app.post('/employer/delete-token', smallJson, requireAuth, requireCsrf, async (r
     }
 });
 
+// Employer renames a device (custom label shown in the dashboard)
+app.post('/employer/rename-token', smallJson, requireAuth, requireCsrf, async (req, res) => {
+    try {
+        const name = String((req.body && req.body.name) || '').trim().slice(0, 100);
+        const tokenDoc = await Token.findOne({
+            _id: (req.body && req.body.token_id),
+            employer_id: req.session.employer_id
+        });
+        if (!tokenDoc) return res.json({ success: false, message: 'Device not found' });
+        await Token.findByIdAndUpdate(tokenDoc._id, { device_name: name });
+        res.json({ success: true });
+    } catch (e) {
+        console.error('rename-token error:', e);
+        res.json({ success: false, message: 'Failed to rename device' });
+    }
+});
+
 // ── Device Routes ────────────────────────────────────────────────────────────
 
 app.post('/device/validate-token', smallJson, deviceLimiter, requireValidDeviceToken, async (req, res) => {
@@ -685,6 +709,8 @@ app.post('/device/gps', smallJson, deviceLimiter, requireValidDeviceToken, async
             return res.json({ success: false, message: 'Invalid location data' });
         }
         await Gps.create({ token: req.deviceToken, latitude: lat, longitude: lon, accuracy: acc, received_at: new Date() });
+        // GPS pings every 5 minutes — use them to keep the online status fresh.
+        await Device.updateOne({ token: req.deviceToken }, { last_seen: new Date() });
         res.json({ success: true });
     } catch (e) {
         console.error('gps error:', e);
@@ -1339,9 +1365,10 @@ app.get('/tokens', requireAuthPage, (req, res) => {
                             \${t.registered ? 'Active' : 'Not registered'}
                         </span>
                     </div>
-                    <div style="display:flex;gap:8px;flex-shrink:0">
+                    <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
                         <button class="btn btn-sm btn-outline" onclick="copyToken('\${esc(t.token)}')">Copy</button>
                         \${t.registered ? \`<button class="btn btn-sm btn-primary" onclick="viewDevice('\${esc(t.token)}')">View</button>\` : ''}
+                        <button class="btn btn-sm btn-outline" data-id="\${esc(t._id)}" data-name="\${esc(t.device_name)}" onclick="renameToken(this)">Rename</button>
                         <button class="btn btn-sm btn-danger" onclick="deleteToken('\${esc(t._id)}')">Remove</button>
                     </div>
                 </div>
@@ -1371,6 +1398,22 @@ app.get('/tokens', requireAuthPage, (req, res) => {
         function copyToken(token) {
             navigator.clipboard.writeText(token);
             alert('Token copied: ' + token);
+        }
+
+        async function renameToken(btn) {
+            const token_id = btn.dataset.id;
+            const current = btn.dataset.name || '';
+            const name = prompt('Rename device', current);
+            if (name === null) return;
+            const trimmed = name.trim();
+            if (trimmed === '' || trimmed === current) return;
+            const res = await fetch('/employer/rename-token', {
+                method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.CSRF_TOKEN},
+                body: JSON.stringify({ token_id, name: trimmed })
+            });
+            const data = await res.json();
+            if (data.success) { loadTokens(); }
+            else { const msg = document.getElementById('msg'); msg.style.display='block'; msg.textContent=data.message; }
         }
 
         function viewDevice(token) { window.location.href = '/device?token=' + token; }
@@ -1409,14 +1452,15 @@ app.get('/device', requireAuthPage, async (req, res) => {
     </head><body>
     <div class="header">
         <div style="min-width:0">
-            <h1>📱 ${esc(device?.device_model) || 'Device'}</h1>
+            <h1>📱 ${esc(owner.device_name || device?.device_model) || 'Device'}</h1>
             <small>Android ${esc(device?.android_version) || '—'}
                 · <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span><span class="${isOnline ? 'status-text-online' : 'status-text-offline'}">${isOnline ? 'Online' : 'Offline'}</span>
                 · Last seen: ${device?.last_seen ? esc(new Date(device.last_seen).toLocaleString()) : 'Never'}
             </small>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-light" onclick="window.location.href='/tokens'">← Back</button>
+            <button class="btn btn-light" onclick="renameDevice()">✏️ Rename</button>
             <button class="btn btn-light" onclick="window.location.href='/logout'">Logout</button>
         </div>
     </div>
@@ -1590,6 +1634,14 @@ app.get('/device', requireAuthPage, async (req, res) => {
         <!-- Remote Control Tab -->
         <div id="tab-remote" class="tab-content">
             <div class="card">
+                <div class="remote-status ${isOnline ? 'online' : 'offline'}">
+                    <span class="dot"></span>
+                    <div>
+                        <b>${isOnline ? 'Device is online' : 'Device is offline'}</b>
+                        &nbsp;·&nbsp; Remote commands ${isOnline ? 'are delivered immediately' : 'are queued and will run when the phone comes back online'}.
+                        Last seen: ${device?.last_seen ? esc(new Date(device.last_seen).toLocaleString()) : 'Never'}
+                    </div>
+                </div>
                 <h3 style="color:#212121;margin-bottom:6px">Remote Control</h3>
                 <p class="subtext">Commands are executed within 2 minutes when device is active.</p>
 
@@ -1640,6 +1692,21 @@ app.get('/device', requireAuthPage, async (req, res) => {
     <script>
     if (!localStorage.getItem('employer_id')) window.location.href = '/login';
     window.CSRF_TOKEN = '${res.locals.csrfToken}';
+
+    async function renameDevice() {
+        const current = (document.querySelector('.header h1').textContent || '').replace(/^📱\s*/, '').trim();
+        const name = prompt('Rename device', current);
+        if (name === null) return;
+        const trimmed = name.trim();
+        if (trimmed === '' || trimmed === current) return;
+        const res = await fetch('/employer/rename-token', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.CSRF_TOKEN },
+            body: JSON.stringify({ token_id: '${owner._id}', name: trimmed })
+        });
+        const data = await res.json();
+        if (data.success) window.location.reload();
+        else alert(data.message || 'Failed to rename device');
+    }
 </script>
 <script src="/dashboard.js"></script>
     </body></html>`);
@@ -1746,6 +1813,8 @@ app.post('/employer/command', smallJson, requireAuth, requireCsrf, requireOwnedT
 // Device polls for pending commands
 app.get('/device/commands', deviceLimiter, requireValidDeviceToken, async (req, res) => {
     try {
+        // The 2-minute command poll is a reliable heartbeat for the online status.
+        await Device.updateOne({ token: req.deviceToken }, { last_seen: new Date() });
         const commands = await Command.find({ token: req.deviceToken, status: 'pending' });
         // Mark as executing
         for (const cmd of commands) {
