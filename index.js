@@ -370,142 +370,147 @@ function cleanFilename(name) {
 
 const styles = `
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: #f4f5f8; color: #1f2937; -webkit-font-smoothing: antialiased; }
-    a { color: #1a1a2e; }
+    body { font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; color: #212121; -webkit-font-smoothing: antialiased; }
+    a { color: #3F51B5; }
 
-    /* Header */
-    .header { background: linear-gradient(120deg, #15152e 0%, #1a1a2e 55%, #26264d 100%); color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; box-shadow: 0 2px 12px rgba(20,20,43,.35); position: sticky; top: 0; z-index: 100; }
-    .header h1 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
-    .header small { color: #9aa3c0; font-size: 12.5px; display: block; margin-top: 3px; }
+    /* Header (2018 Material: solid primary bar) */
+    .header { background: #3F51B5; color: #fff; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; box-shadow: 0 2px 4px rgba(0,0,0,.2); position: sticky; top: 0; z-index: 100; }
+    .header h1 { font-size: 19px; font-weight: 500; letter-spacing: .01em; }
+    .header small { color: #c5cae9; font-size: 12.5px; display: block; margin-top: 3px; }
     .container { max-width: 1120px; margin: 26px auto; padding: 0 20px; animation: fadeUp .25s ease both; }
 
-    /* Cards */
-    .card { background: #fff; border: 1px solid #e8eaf0; border-radius: 14px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 22px rgba(16,24,40,.05); }
+    /* Cards (Material elevation 2dp) */
+    .card { background: #fff; border-radius: 2px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 2px rgba(0,0,0,.14), 0 1px 5px rgba(0,0,0,.12); }
     .card-tight { padding: 0; overflow-x: auto; }
 
-    /* Buttons */
-    .btn { padding: 9px 18px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background .18s ease, color .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
-    .btn:active { transform: scale(.98); }
-    .btn-primary { background: #1a1a2e; color: #fff; }
-    .btn-primary:hover { background: #27274b; box-shadow: 0 6px 14px rgba(26,26,46,.28); transform: translateY(-1px); }
-    .btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-    .btn-danger:hover { background: #fee2e2; }
-    .btn-success { background: #16a34a; color: #fff; }
-    .btn-success:hover { background: #15803d; box-shadow: 0 6px 14px rgba(22,163,74,.25); transform: translateY(-1px); }
-    .btn-outline { background: #fff; color: #374151; border: 1px solid #e2e4ea; }
-    .btn-outline:hover { background: #f6f7fa; border-color: #c9cdd6; }
-    .btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 8px; }
+    /* Buttons (Material: uppercase, 2dp radius) */
+    .btn { padding: 8px 16px; border: none; border-radius: 2px; cursor: pointer; font-size: 14px; font-weight: 500; letter-spacing: .5px; text-transform: uppercase; font-family: inherit; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; transition: background .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+    .btn:active { box-shadow: 0 4px 5px rgba(0,0,0,.2); }
+    .btn-primary { background: #3F51B5; color: #fff; box-shadow: 0 2px 2px rgba(0,0,0,.2); }
+    .btn-primary:hover { background: #303F9F; box-shadow: 0 4px 8px rgba(63,81,181,.4); }
+    .btn-danger { background: #F44336; color: #fff; box-shadow: 0 2px 2px rgba(0,0,0,.2); }
+    .btn-danger:hover { background: #D32F2F; }
+    .btn-success { background: #4CAF50; color: #fff; box-shadow: 0 2px 2px rgba(0,0,0,.2); }
+    .btn-success:hover { background: #388E3C; }
+    .btn-outline { background: #fff; color: #424242; border: 1px solid #bdbdbd; }
+    .btn-outline:hover { background: #f5f5f5; }
+    .btn-light { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.8); }
+    .btn-light:hover { background: rgba(255,255,255,.15); }
+    .btn-accent { background: #fff; color: #3F51B5; box-shadow: 0 2px 2px rgba(0,0,0,.2); }
+    .btn-accent:hover { background: #e8eaf6; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; min-height: 28px; }
 
-    /* Inputs */
-    input, select { width: 100%; padding: 10px 14px; border: 1px solid #d4d7df; border-radius: 10px; font-size: 14px; font-family: inherit; background: #fff; color: #1f2937; margin-bottom: 12px; transition: border-color .15s ease, box-shadow .15s ease; }
-    input:focus, select:focus { outline: none; border-color: #1a1a2e; box-shadow: 0 0 0 3px rgba(26,26,46,.12); }
+    /* Inputs (Material underline style) */
+    input, select { width: 100%; padding: 8px 0; border: none; border-bottom: 1px solid #9e9e9e; border-radius: 0; font-size: 15px; font-family: inherit; background: transparent; color: #212121; margin-bottom: 16px; transition: border-color .15s ease; }
+    input:focus, select:focus { outline: none; border-bottom: 2px solid #3F51B5; }
+    select { padding: 8px 2px; background: #fff; }
 
     /* Alerts */
-    .msg { padding: 12px 14px; border-radius: 10px; margin-bottom: 12px; font-size: 13.5px; }
-    .msg-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-    .msg-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .msg { padding: 12px 14px; border-radius: 2px; margin-bottom: 16px; font-size: 13.5px; }
+    .msg-error { background: #FDECEA; color: #C62828; border: 1px solid #F9C9C6; }
+    .msg-success { background: #E8F5E9; color: #2E7D32; border: 1px solid #C8E6C9; }
 
     /* Tables */
     table { width: 100%; border-collapse: collapse; }
-    th { background: #f8f9fc; color: #4b5563; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; padding: 12px 16px; text-align: left; border-bottom: 1px solid #e8eaf0; white-space: nowrap; }
-    td { padding: 12px 16px; border-bottom: 1px solid #f0f1f5; font-size: 13.5px; vertical-align: middle; }
+    th { background: #fafafa; color: #757575; font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; padding: 12px 16px; text-align: left; border-bottom: 1px solid #e0e0e0; white-space: nowrap; }
+    td { padding: 12px 16px; border-bottom: 1px solid #e0e0e0; font-size: 13.5px; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f6f8ff; }
+    tr:hover td { background: #e8eaf6; }
     .cell-text { max-width: 400px; overflow-wrap: break-word; }
 
     /* Tokens page */
     .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
-    .token-card { background: #f8f9fc; border: 1px solid #eceef3; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: border-color .15s ease, box-shadow .15s ease; }
-    .token-card:hover { border-color: #d4d7df; box-shadow: 0 4px 14px rgba(16,24,40,.06); }
-    .token-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #6b7280; word-break: break-all; margin-top: 4px; }
-    .badge { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600; display: inline-block; }
-    .badge-green { background: #dcfce7; color: #15803d; }
-    .badge-gray { background: #f3f4f6; color: #6b7280; }
-    .badge-red { background: #fee2e2; color: #b91c1c; }
+    .token-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 2px; padding: 16px 18px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: border-color .15s ease, box-shadow .15s ease; }
+    .token-card:hover { border-color: #3F51B5; box-shadow: 0 2px 4px rgba(0,0,0,.14); }
+    .token-code { font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: #616161; word-break: break-all; margin-top: 4px; }
+    .badge { padding: 2px 10px; border-radius: 2px; font-size: 11.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .03em; display: inline-block; }
+    .badge-green { background: #E8F5E9; color: #2E7D32; }
+    .badge-gray { background: #eeeeee; color: #616161; }
+    .badge-red { background: #FDECEA; color: #C62828; }
 
     /* Media */
-    img.thumb { width: 76px; height: 76px; object-fit: cover; border-radius: 10px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
-    img.thumb:hover { transform: scale(1.06); box-shadow: 0 4px 14px rgba(16,24,40,.22); }
+    img.thumb { width: 76px; height: 76px; object-fit: cover; border-radius: 2px; cursor: pointer; transition: box-shadow .15s ease; }
+    img.thumb:hover { box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 
     /* Plans */
     .plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; }
-    .plan-card { border: 1px solid #e2e4ea; border-radius: 14px; padding: 24px 20px; text-align: center; cursor: pointer; transition: all .2s ease; background: #fff; }
-    .plan-card:hover { border-color: #1a1a2e; transform: translateY(-3px); box-shadow: 0 10px 24px rgba(16,24,40,.08); }
-    .plan-card h3 { margin-bottom: 8px; font-size: 16px; }
-    .plan-card .price { font-size: 18px; font-weight: 700; color: #1a1a2e; margin: 8px 0; }
-    .plan-card .devices { color: #6b7280; font-size: 13px; margin-bottom: 14px; }
-    .plan-card.popular { border-color: #1a1a2e; background: linear-gradient(180deg, #f4f5ff, #fff); box-shadow: 0 8px 20px rgba(26,26,46,.12); }
+    .plan-card { border: 1px solid #e0e0e0; border-radius: 2px; padding: 24px 20px; text-align: center; cursor: pointer; transition: box-shadow .18s ease, border-color .18s ease; background: #fff; }
+    .plan-card:hover { border-color: #3F51B5; box-shadow: 0 4px 10px rgba(0,0,0,.16); }
+    .plan-card h3 { margin-bottom: 8px; font-size: 16px; font-weight: 500; }
+    .plan-card .price { font-size: 18px; font-weight: 500; color: #3F51B5; margin: 8px 0; }
+    .plan-card .devices { color: #757575; font-size: 13px; margin-bottom: 14px; }
+    .plan-card.popular { border-color: #3F51B5; background: #e8eaf6; box-shadow: 0 4px 10px rgba(63,81,181,.25); }
 
-    /* Tabs */
-    .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-    .tab { padding: 9px 16px; border: 1px solid #e2e4ea; border-radius: 999px; cursor: pointer; font-size: 13.5px; font-weight: 500; background: #fff; color: #4b5563; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.04); transition: all .18s ease; font-family: inherit; }
-    .tab:hover { border-color: #1a1a2e; color: #1a1a2e; transform: translateY(-1px); }
-    .tab.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; box-shadow: 0 4px 12px rgba(26,26,46,.28); }
+    /* Tabs (Material tab bar) */
+    .tabs { display: flex; gap: 0; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 1px solid #e0e0e0; }
+    .tab { padding: 12px 16px; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; font-weight: 500; background: transparent; color: #757575; display: inline-flex; align-items: center; gap: 6px; transition: color .18s ease, border-color .18s ease; font-family: inherit; }
+    .tab:hover { color: #303F9F; }
+    .tab.active { color: #3F51B5; border-bottom-color: #3F51B5; }
     .tab-content { display: none; }
     .tab-content.active { display: block; animation: fadeUp .2s ease both; }
 
     /* States */
-    .empty { text-align: center; color: #9ca3af; padding: 48px 20px; font-size: 14px; }
-    .no-data { color: #9ca3af; text-align: center; padding: 36px 20px; font-size: 13.5px; }
+    .empty { text-align: center; color: #9e9e9e; padding: 48px 20px; font-size: 14px; }
+    .no-data { color: #9e9e9e; text-align: center; padding: 36px 20px; font-size: 13.5px; }
 
     /* Device status */
     .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-    .status-online { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.2); }
-    .status-offline { background: #9ca3af; }
-    .status-text-online { color: #86efac; }
-    .status-text-offline { color: #9aa3c0; }
+    .status-online { background: #4CAF50; }
+    .status-offline { background: #9e9e9e; }
+    .status-text-online { color: #E8F5E9; }
+    .status-text-offline { color: #c5cae9; }
 
     /* Remote control */
-    .subtext { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
-    .section-title { color: #1f2937; margin-bottom: 14px; font-size: 15px; font-weight: 600; }
+    .subtext { color: #757575; font-size: 13px; margin-bottom: 20px; }
+    .section-title { color: #212121; margin-bottom: 14px; font-size: 15px; font-weight: 500; }
     .remote-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .remote-card { background: #f8f9fc; border: 1px solid #eceef3; border-radius: 14px; padding: 22px 20px; text-align: center; transition: all .18s ease; }
-    .remote-card:hover { border-color: #d4d7df; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16,24,40,.07); }
+    .remote-card { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 2px; padding: 22px 20px; text-align: center; transition: box-shadow .18s ease, border-color .18s ease; }
+    .remote-card:hover { border-color: #bdbdbd; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
     .remote-icon { font-size: 30px; margin-bottom: 10px; }
-    .remote-card h4 { margin-bottom: 6px; font-size: 15px; }
-    .remote-card p { color: #6b7280; font-size: 12.5px; margin-bottom: 14px; line-height: 1.45; }
-    .result-card { background: #f8f9fc; border: 1px solid #eceef3; border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .remote-card h4 { margin-bottom: 6px; font-size: 15px; font-weight: 500; }
+    .remote-card p { color: #757575; font-size: 12.5px; margin-bottom: 14px; line-height: 1.45; }
+    .result-card { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 2px; padding: 16px; margin-bottom: 14px; }
     .result-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 4px; }
-    .result-label { font-weight: 600; font-size: 14px; }
-    .result-date { color: #9ca3af; font-size: 12px; }
-    .result-card img { max-width: 100%; border-radius: 10px; cursor: pointer; margin-top: 10px; }
-    .result-link { display: inline-block; margin-top: 10px; color: #1a1a2e; font-size: 13px; font-weight: 500; text-decoration: none; }
+    .result-label { font-weight: 500; font-size: 14px; }
+    .result-date { color: #9e9e9e; font-size: 12px; }
+    .result-card img { max-width: 100%; border-radius: 2px; cursor: pointer; margin-top: 10px; }
+    .result-link { display: inline-block; margin-top: 10px; color: #3F51B5; font-size: 13px; font-weight: 500; text-decoration: none; }
     .result-link:hover { text-decoration: underline; }
     audio { width: 100%; margin-top: 10px; }
     .audio-mini { height: 34px; width: 210px; margin: 0; }
-    .map-link { color: #1a1a2e; font-weight: 600; text-decoration: none; font-size: 12.5px; background: #eef0ff; padding: 4px 10px; border-radius: 8px; transition: background .15s ease; }
-    .map-link:hover { background: #e0e3ff; }
+    .map-link { color: #303F9F; font-weight: 500; text-decoration: none; font-size: 12.5px; background: #e8eaf6; padding: 4px 10px; border-radius: 2px; transition: background .15s ease; }
+    .map-link:hover { background: #c5cae9; }
 
     /* Messages */
-    .direction-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+    .direction-btn.active { background: #3F51B5; color: #fff; border-color: #3F51B5; }
     .app-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .app-card { border: 1.5px solid #e6e8ef; border-radius: 14px; padding: 22px 16px; text-align: center; cursor: pointer; transition: all .18s ease; background: #fff; }
-    .app-card:hover { border-color: #1a1a2e; transform: translateY(-3px); box-shadow: 0 8px 20px rgba(16,24,40,.08); }
+    .app-card { border: 1px solid #e0e0e0; border-radius: 2px; padding: 22px 16px; text-align: center; cursor: pointer; transition: box-shadow .18s ease, border-color .18s ease; background: #fff; }
+    .app-card:hover { border-color: #3F51B5; box-shadow: 0 4px 8px rgba(0,0,0,.14); }
     .app-icon { font-size: 30px; margin-bottom: 8px; }
-    .app-name { font-weight: 600; font-size: 14.5px; }
-    .app-count { color: #6b7280; font-size: 12.5px; margin-top: 4px; }
+    .app-name { font-weight: 500; font-size: 14.5px; }
+    .app-count { color: #757575; font-size: 12.5px; margin-top: 4px; }
     .back-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
-    .chat-list { border: 1px solid #eceef3; border-radius: 12px; overflow: hidden; background: #fff; }
-    .chat-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f0f1f5; cursor: pointer; transition: background .12s ease; }
+    .chat-list { border: 1px solid #e0e0e0; border-radius: 2px; overflow: hidden; background: #fff; }
+    .chat-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #eeeeee; cursor: pointer; transition: background .12s ease; }
     .chat-item:last-child { border-bottom: none; }
-    .chat-item:hover { background: #f6f8ff; }
-    .chat-name { font-weight: 600; font-size: 14px; }
-    .chat-preview { color: #9ca3af; font-size: 12.5px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; }
+    .chat-item:hover { background: #f5f5f5; }
+    .chat-name { font-weight: 500; font-size: 14px; }
+    .chat-preview { color: #9e9e9e; font-size: 12.5px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 420px; }
     .chat-meta { text-align: right; flex-shrink: 0; margin-left: 12px; }
-    .chat-time { color: #9ca3af; font-size: 11.5px; }
-    .chat-count { background: #1a1a2e; color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 600; margin-top: 5px; display: inline-block; }
-    .msg-thread { max-height: 480px; overflow-y: auto; border: 1px solid #eceef3; border-radius: 12px; background: #fbfcfe; padding: 12px; }
+    .chat-time { color: #9e9e9e; font-size: 11.5px; }
+    .chat-count { background: #3F51B5; color: #fff; border-radius: 16px; padding: 2px 9px; font-size: 11px; font-weight: 500; margin-top: 5px; display: inline-block; }
+    .msg-thread { max-height: 480px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 2px; background: #fafafa; padding: 12px; }
     .msg-thread::-webkit-scrollbar { width: 8px; }
-    .msg-thread::-webkit-scrollbar-thumb { background: #d4d7df; border-radius: 8px; }
+    .msg-thread::-webkit-scrollbar-thumb { background: #bdbdbd; border-radius: 4px; }
     .msg-row { display: flex; justify-content: flex-start; margin-bottom: 10px; }
-    .msg-bubble { background: #fff; border: 1px solid #e6e8ef; border-radius: 14px; border-bottom-left-radius: 4px; padding: 9px 14px; max-width: 78%; box-shadow: 0 1px 2px rgba(16,24,40,.05); }
+    .msg-bubble { background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; padding: 9px 14px; max-width: 78%; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
     .msg-bubble .text { font-size: 14px; line-height: 1.45; }
-    .msg-time { color: #9ca3af; font-size: 11px; margin-top: 6px; text-align: right; }
-    .table-wrap { border: 1px solid #eceef3; border-radius: 12px; overflow: hidden; }
+    .msg-time { color: #9e9e9e; font-size: 11px; margin-top: 6px; text-align: right; }
+    .table-wrap { border: 1px solid #e0e0e0; border-radius: 2px; overflow: hidden; }
 
     /* Lightbox */
-    #lightbox { display: none; position: fixed; inset: 0; background: rgba(15,15,30,.92); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; }
-    #lightbox img { max-width: 90%; max-height: 90%; border-radius: 12px; animation: zoomIn .18s ease both; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    #lightbox { display: none; position: fixed; inset: 0; background: rgba(33,33,33,.9); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; }
+    #lightbox img { max-width: 90%; max-height: 90%; border-radius: 2px; animation: zoomIn .18s ease both; box-shadow: 0 16px 48px rgba(0,0,0,.5); }
     .lightbox-close { position: fixed; top: 18px; right: 26px; color: #fff; font-size: 32px; font-weight: 300; line-height: 1; cursor: pointer; opacity: .75; transition: opacity .15s ease; z-index: 10000; }
     .lightbox-close:hover { opacity: 1; }
 
@@ -879,141 +884,86 @@ app.get('/', (req, res) => {
     const loggedIn = !!(req.session && req.session.employer_id);
     const dashboardHref = loggedIn ? '/tokens' : '/login';
     res.send(`<!DOCTYPE html><html><head><title>FloofTracker - Employee Monitoring</title><style>
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:"MS Sans Serif","Tahoma","Verdana",sans-serif; font-size:11px; color:#000; background:#008080; min-height:100vh; padding:16px 16px 48px; }
-    /* Window chrome */
-    .window { background:#c0c0c0; max-width:1000px; margin:8px auto 14px; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; box-shadow:0 0 0 1px #000; }
-    .titlebar { background:linear-gradient(90deg,#000080,#1084d0); color:#fff; padding:3px 4px; display:flex; align-items:center; gap:8px; user-select:none; }
-    .titlebar .title { font-weight:bold; font-size:11px; letter-spacing:.2px; }
-    .win-btns { margin-left:auto; display:flex; gap:2px; }
-    .win-btn { width:16px; height:14px; background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; color:#000; font-size:9px; font-weight:bold; line-height:11px; text-align:center; cursor:pointer; font-family:inherit; }
-    .win-btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
-    .menubar { background:#c0c0c0; border-bottom:1px solid #808080; padding:1px 2px; display:flex; gap:1px; }
-    .menubar button { background:transparent; border:none; font-family:inherit; font-size:11px; padding:2px 8px; cursor:pointer; color:#000; }
-    .menubar button:hover { background:#000080; color:#fff; }
-    .body { padding:12px; }
-    .panel { background:#fff; border-top:2px solid #808080; border-left:2px solid #808080; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; padding:16px; }
-    /* Content */
-    .hero { text-align:center; padding:6px 0 8px; }
-    .hero h2 { font-size:20px; color:#000080; margin-bottom:8px; }
-    .hero p { font-size:11px; color:#333; max-width:640px; margin:0 auto 14px; line-height:1.5; }
-    .hero-btns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
-    .groupbox { border:1px solid #808080; box-shadow:inset 1px 1px 0 #fff; padding:12px; margin-top:16px; position:relative; }
-    .groupbox .gtitle { position:absolute; top:-7px; left:8px; background:#fff; padding:0 4px; font-weight:bold; font-size:11px; color:#000080; }
-    .feature-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:12px; }
-    .feature-item { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #808080; border-bottom:2px solid #808080; padding:10px 8px; text-align:center; }
-    .feature-item .icon { font-size:22px; }
-    .feature-item h4 { font-size:11px; margin:4px 0 2px; color:#000; }
-    .feature-item p { font-size:10px; color:#333; line-height:1.4; }
-    .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:12px; }
-    .step { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #808080; border-bottom:2px solid #808080; padding:10px; text-align:center; }
-    .step .num { font-weight:bold; font-size:14px; color:#000080; }
-    .step h4 { margin:4px 0 2px; }
-    .step p { font-size:10px; color:#333; line-height:1.4; }
-    .cta { text-align:center; padding:16px 0 4px; }
-    .cta p { margin-bottom:10px; }
-    /* Controls */
-    .btn { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; font-family:inherit; font-size:11px; padding:4px 14px; cursor:pointer; color:#000; }
-    .btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
-    .btn:focus { outline:1px dotted #000; outline-offset:-3px; }
-    .btn-primary { font-weight:bold; }
-    /* Status bar + taskbar */
-    .statusbar { background:#c0c0c0; border-top:2px solid #808080; padding:2px 4px; display:flex; gap:8px; }
-    .statusbar .cell { border:1px solid; border-color:#808080 #dfdfdf #dfdfdf #808080; padding:1px 8px; font-size:10px; }
-    .taskbar { position:fixed; bottom:0; left:0; right:0; background:#c0c0c0; border-top:2px solid #dfdfdf; padding:3px 4px; display:flex; align-items:center; gap:6px; z-index:100; }
-    .start-btn { display:flex; align-items:center; gap:5px; background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; font-family:inherit; font-size:11px; font-weight:bold; padding:2px 10px 2px 4px; cursor:pointer; color:#000; }
-    .start-btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
-    .flag { width:14px; height:14px; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
-    .flag span:nth-child(1){background:#ff0000;} .flag span:nth-child(2){background:#00a800;} .flag span:nth-child(3){background:#0000ff;} .flag span:nth-child(4){background:#ffff00;}
-    .task-item { background:#c0c0c0; border-top:2px solid #808080; border-left:2px solid #808080; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; padding:2px 14px; font-size:11px; cursor:pointer; font-family:inherit; color:#000; }
-    .task-item:active { border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #808080; border-bottom:2px solid #808080; }
-    .tray { margin-left:auto; border:1px solid; border-color:#808080 #dfdfdf #dfdfdf #808080; padding:2px 8px; font-size:11px; background:#c0c0c0; }
-    .desktop-footer { text-align:center; color:#fff; font-size:10px; padding:4px 0 2px; }
-    .desktop-footer a { color:#ffff00; text-decoration:none; }
-    .desktop-footer a:hover { text-decoration:underline; }
+    ${styles}
+    /* Landing page (2018 Material look) */
+    .hero { text-align:center; padding: 40px 24px; }
+    .hero h2 { font-size: 28px; font-weight: 500; color: #212121; margin-bottom: 12px; }
+    .hero p { color: #616161; font-size: 15px; max-width: 640px; margin: 0 auto 28px; line-height: 1.6; }
+    .hero-btns { display:flex; gap: 12px; justify-content:center; flex-wrap:wrap; }
+    .feature-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap: 16px; margin-top: 20px; }
+    .feature-item { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 2px; padding: 20px 16px; text-align:center; }
+    .feature-item .icon { font-size: 30px; margin-bottom: 8px; }
+    .feature-item h4 { color: #212121; font-weight: 500; margin-bottom: 4px; }
+    .feature-item p { color: #757575; font-size: 12.5px; line-height: 1.5; }
+    .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap: 16px; margin-top: 20px; }
+    .step { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 2px; padding: 20px; text-align:center; }
+    .step .num { display:inline-flex; align-items:center; justify-content:center; width: 32px; height: 32px; border-radius: 50%; background: #3F51B5; color: #fff; font-weight: 500; margin-bottom: 8px; }
+    .step h4 { font-weight: 500; margin-bottom: 4px; color: #212121; }
+    .step p { color: #757575; font-size: 12.5px; line-height: 1.5; }
+    .cta { text-align:center; padding: 8px 0 0; }
+    .cta p { margin-bottom: 16px; color: #616161; font-size: 14px; line-height: 1.6; }
+    .landing-footer { text-align:center; color: #757575; font-size: 13px; padding: 8px 0 24px; }
+    .landing-footer a { color: #3F51B5; text-decoration: none; }
+    .landing-footer a:hover { text-decoration: underline; }
     </style></head><body>
-    <div class="window">
-        <div class="titlebar">
-            <span class="title">FloofTracker — Employee Monitoring</span>
-            <div class="win-btns">
-                <button class="win-btn" title="Minimize">—</button>
-                <button class="win-btn" title="Maximize">□</button>
-                <button class="win-btn" title="Close" onclick="about()">✕</button>
-            </div>
+    <div class="header">
+        <div style="min-width:0">
+            <h1>🐾 FloofTracker</h1>
+            <small>Employee monitoring made simple</small>
         </div>
-        <div class="menubar">
-            <button>File</button><button>Edit</button><button>View</button><button onclick="about()">Help</button>
-        </div>
-        <div class="body">
-            <div class="panel">
-                <div class="hero">
-                    <h2>🐾 Welcome to FloofTracker</h2>
-                    <p>Know what's happening on your company devices. FloofTracker gives you real-time visibility into location, calls, messages, app usage, media and more — all from a single dashboard.</p>
-                    <div class="hero-btns">
-                        <button class="btn btn-primary" onclick="goDashboard()">Go to Dashboard</button>
-                        ${loggedIn
-                            ? '<button class="btn" onclick="window.location.href=\'/logout\'">Logout</button>'
-                            : '<button class="btn" onclick="window.location.href=\'/login\'">Login</button><button class="btn btn-primary" onclick="window.location.href=\'/register\'">Sign Up Free</button>'}
-                    </div>
-                </div>
-
-                <div class="groupbox">
-                    <div class="gtitle">Features</div>
-                    <div class="feature-grid">
-                        <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking with accuracy and history</p></div>
-                        <div class="feature-item"><div class="icon">📞</div><h4>Call Logs &amp; Recordings</h4><p>Incoming, outgoing and missed calls with duration and audio</p></div>
-                        <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
-                        <div class="feature-item"><div class="icon">📊</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
-                        <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
-                        <div class="feature-item"><div class="icon">🖼️</div><h4>Photos &amp; Screenshots</h4><p>Thumbnail previews, with full-resolution downloads</p></div>
-                        <div class="feature-item"><div class="icon">💌</div><h4>Instant Messages</h4><p>Messenger, WhatsApp, Telegram and more</p></div>
-                        <div class="feature-item"><div class="icon">🎙️</div><h4>Remote Recording</h4><p>Capture ambient audio on demand, right from the dashboard</p></div>
-                        <div class="feature-item"><div class="icon">📷</div><h4>Remote Photo</h4><p>Silently capture front or back camera</p></div>
-                        <div class="feature-item"><div class="icon">⚡</div><h4>Live Status</h4><p>See online/offline status and last-seen at a glance</p></div>
-                    </div>
-                </div>
-
-                <div class="groupbox">
-                    <div class="gtitle">How it works</div>
-                    <div class="steps">
-                        <div class="step"><div class="num">1</div><h4>Create your account</h4><p>Sign up free — no credit card required</p></div>
-                        <div class="step"><div class="num">2</div><h4>Add a device</h4><p>Generate a token and install the FloofTracker app on the phone</p></div>
-                        <div class="step"><div class="num">3</div><h4>Open the dashboard</h4><p>View location, calls, messages, media and more in real time</p></div>
-                    </div>
-                </div>
-
-                <div class="cta">
-                    <p><b>Ready to get started?</b><br/>Join employers who monitor their teams with FloofTracker.</p>
-                    <div class="hero-btns">
-                        <button class="btn btn-primary" onclick="goDashboard()">Go to Dashboard</button>
-                        <button class="btn" onclick="window.location.href='/register'">Sign Up Free</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="statusbar">
-            <span class="cell">Ready</span>
-            <span class="cell">10 features</span>
-            <span class="cell">© 2026 FloofTracker</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            ${loggedIn
+                ? '<button class="btn btn-light" onclick="window.location.href=\'/logout\'">Logout</button>'
+                : '<button class="btn btn-light" onclick="window.location.href=\'/login\'">Login</button><button class="btn btn-accent" onclick="window.location.href=\'/register\'">Sign Up Free</button>'}
         </div>
     </div>
+    <div class="container">
+        <div class="card hero">
+            <h2>Welcome to FloofTracker</h2>
+            <p>Know what's happening on your company devices. FloofTracker gives you real-time visibility into location, calls, messages, app usage, media and more — all from a single dashboard.</p>
+            <div class="hero-btns">
+                <button class="btn btn-primary" onclick="goDashboard()">Go to Dashboard</button>
+            </div>
+        </div>
 
-    <div class="desktop-footer">
+        <div class="card">
+            <h2 style="font-weight:500;margin-bottom:4px">Features</h2>
+            <div class="feature-grid">
+                <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking with accuracy and history</p></div>
+                <div class="feature-item"><div class="icon">📞</div><h4>Call Logs &amp; Recordings</h4><p>Incoming, outgoing and missed calls with duration and audio</p></div>
+                <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
+                <div class="feature-item"><div class="icon">📊</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
+                <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
+                <div class="feature-item"><div class="icon">🖼️</div><h4>Photos &amp; Screenshots</h4><p>Thumbnail previews, with full-resolution downloads</p></div>
+                <div class="feature-item"><div class="icon">💌</div><h4>Instant Messages</h4><p>Messenger, WhatsApp, Telegram and more</p></div>
+                <div class="feature-item"><div class="icon">🎙️</div><h4>Remote Recording</h4><p>Capture ambient audio on demand, right from the dashboard</p></div>
+                <div class="feature-item"><div class="icon">📷</div><h4>Remote Photo</h4><p>Silently capture front or back camera</p></div>
+                <div class="feature-item"><div class="icon">⚡</div><h4>Live Status</h4><p>See online/offline status and last-seen at a glance</p></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-weight:500;margin-bottom:4px">How it works</h2>
+            <div class="steps">
+                <div class="step"><div class="num">1</div><h4>Create your account</h4><p>Sign up free — no credit card required</p></div>
+                <div class="step"><div class="num">2</div><h4>Add a device</h4><p>Generate a token and install the FloofTracker app on the phone</p></div>
+                <div class="step"><div class="num">3</div><h4>Open the dashboard</h4><p>View location, calls, messages, media and more in real time</p></div>
+            </div>
+        </div>
+
+        <div class="card cta">
+            <p><b>Ready to get started?</b><br/>Join employers who monitor their teams with FloofTracker.</p>
+            <div class="hero-btns">
+                <button class="btn btn-primary" onclick="goDashboard()">Go to Dashboard</button>
+                <button class="btn btn-outline" onclick="window.location.href='/register'">Sign Up Free</button>
+            </div>
+        </div>
+    </div>
+    <div class="landing-footer">
         <a href="/terms">Terms of Service</a> &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a>
     </div>
-
-    <div class="taskbar">
-        <button class="start-btn" onclick="startMenu()"><span class="flag"><span></span><span></span><span></span><span></span></span>Start</button>
-        <button class="task-item" onclick="goDashboard()">FloofTracker</button>
-        <div class="tray" id="clock"></div>
-    </div>
-
     <script>
         function goDashboard() { window.location.href = '${dashboardHref}'; }
-        function about() { alert('FloofTracker v1.0 — Employee monitoring made simple. © 2026 FloofTracker'); }
-        function startMenu() { alert('Welcome to FloofTracker! Click "Go to Dashboard" to get started.'); }
-        function tick() { var d = new Date(); document.getElementById('clock').textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
-        setInterval(tick, 1000); tick();
     </script>
     </body></html>`);
 });
@@ -1022,12 +972,12 @@ app.get('/login', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Login - FloofTracker</title><style>
     ${styles}
     .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
-    .login-box { background:white; border:1px solid #e8eaf0; border-radius:16px; padding:40px; width:380px; box-shadow:0 8px 30px rgba(16,24,40,.08); }
-    .login-box h2 { margin-bottom:6px; color:#1a1a2e; }
-    .login-box p { color:#888; margin-bottom:24px; font-size:14px; }
+    .login-box { background:#fff; border-radius:2px; padding:40px; width:380px; box-shadow:0 2px 2px rgba(0,0,0,.14), 0 1px 5px rgba(0,0,0,.12); }
+    .login-box h2 { margin-bottom:6px; color:#212121; }
+    .login-box p { color:#757575; margin-bottom:24px; font-size:14px; }
     .btn { width:100%; padding:12px; font-size:15px; }
-    a { display:block; text-align:center; margin-top:16px; color:#6b7280; font-size:13px; text-decoration:none; }
-    a:hover { color:#1a1a2e; }
+    a { display:block; text-align:center; margin-top:16px; color:#757575; font-size:13px; text-decoration:none; }
+    a:hover { color:#303F9F; }
     </style></head><body>
     <div class="login-wrap">
         <div class="login-box">
@@ -1070,40 +1020,31 @@ app.get('/login', (req, res) => {
 // by counsel before relying on them in production.
 function renderLegal(title, updated, sections) {
     return `<!DOCTYPE html><html><head><title>${title} - FloofTracker</title><style>
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:"MS Sans Serif","Tahoma","Verdana",sans-serif; font-size:11px; color:#000; background:#008080; padding:16px; }
-    .window { background:#c0c0c0; max-width:860px; margin:8px auto 16px; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; box-shadow:0 0 0 1px #000; }
-    .titlebar { background:linear-gradient(90deg,#000080,#1084d0); color:#fff; padding:3px 4px; display:flex; align-items:center; }
-    .titlebar .title { font-weight:bold; font-size:11px; }
-    .menubar { background:#c0c0c0; border-bottom:1px solid #808080; padding:1px 2px; display:flex; gap:1px; }
-    .menubar button { background:transparent; border:none; font-family:inherit; font-size:11px; padding:2px 8px; cursor:pointer; color:#000; }
-    .menubar button:hover { background:#000080; color:#fff; }
-    .body { padding:12px; }
-    .panel { background:#fff; border-top:2px solid #808080; border-left:2px solid #808080; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; padding:16px; }
-    .panel h2 { color:#000080; font-size:16px; margin-bottom:4px; }
-    .updated { color:#666; font-size:10px; margin-bottom:12px; border-bottom:1px solid #ccc; padding-bottom:6px; }
-    .panel h3 { color:#000080; font-size:12px; margin:14px 0 4px; }
-    .panel p, .panel li { font-size:11px; color:#222; line-height:1.55; margin-bottom:6px; }
-    .panel ul { margin:0 0 6px 18px; }
-    .back { text-align:center; margin-top:12px; }
-    .btn { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; font-family:inherit; font-size:11px; padding:4px 14px; cursor:pointer; color:#000; }
-    .btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
+    ${styles}
+    .legal { max-width: 860px; }
+    .legal h2 { font-size: 22px; font-weight: 500; color: #212121; margin-bottom: 4px; }
+    .updated { color: #757575; font-size: 13px; margin-bottom: 16px; border-bottom: 1px solid #e0e0e0; padding-bottom: 12px; }
+    .legal h3 { font-size: 15px; font-weight: 500; color: #3F51B5; margin: 18px 0 8px; }
+    .legal p, .legal li { font-size: 14px; color: #424242; line-height: 1.6; margin-bottom: 8px; }
+    .legal ul { margin: 0 0 8px 20px; }
+    .back { text-align:center; margin-top: 20px; }
     </style></head><body>
-    <div class="window">
-        <div class="titlebar"><span class="title">FloofTracker — ${title}</span></div>
-        <div class="menubar">
-            <button onclick="window.location.href='/'">Home</button>
-            <button onclick="window.location.href='/login'">Login</button>
-            <button onclick="window.location.href='/terms'">Terms</button>
-            <button onclick="window.location.href='/privacy'">Privacy</button>
+    <div class="header">
+        <div style="min-width:0">
+            <h1>FloofTracker</h1>
+            <small>${title}</small>
         </div>
-        <div class="body">
-            <div class="panel">
-                <h2>${title}</h2>
-                <div class="updated">Last updated: ${updated}</div>
-                ${sections.map(s => `<h3>${s.h}</h3>${s.p.map(p => `<p>${p}</p>`).join('')}${s.list ? `<ul>${s.list.map(i => `<li>${i}</li>`).join('')}</ul>` : ''}`).join('')}
-                <div class="back"><button class="btn" onclick="window.location.href='/'">← Back to home</button></div>
-            </div>
+        <div style="display:flex;gap:8px">
+            <button class="btn btn-light" onclick="window.location.href='/'">Home</button>
+            <button class="btn btn-light" onclick="window.location.href='/login'">Login</button>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card legal">
+            <h2>${title}</h2>
+            <div class="updated">Last updated: ${updated}</div>
+            ${sections.map(s => `<h3>${s.h}</h3>${s.p.map(p => `<p>${p}</p>`).join('')}${s.list ? `<ul>${s.list.map(i => `<li>${i}</li>`).join('')}</ul>` : ''}`).join('')}
+            <div class="back"><button class="btn btn-outline" onclick="window.location.href='/'" style="width:auto">← Back to home</button></div>
         </div>
     </div>
     </body></html>`;
@@ -1199,12 +1140,12 @@ app.get('/register', (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Register - FloofTracker</title><style>
     ${styles}
     .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
-    .login-box { background:white; border:1px solid #e8eaf0; border-radius:16px; padding:40px; width:380px; box-shadow:0 8px 30px rgba(16,24,40,.08); }
-    .login-box h2 { margin-bottom:6px; color:#1a1a2e; }
-    .login-box p { color:#888; margin-bottom:24px; font-size:14px; }
+    .login-box { background:#fff; border-radius:2px; padding:40px; width:380px; box-shadow:0 2px 2px rgba(0,0,0,.14), 0 1px 5px rgba(0,0,0,.12); }
+    .login-box h2 { margin-bottom:6px; color:#212121; }
+    .login-box p { color:#757575; margin-bottom:24px; font-size:14px; }
     .btn { width:100%; padding:12px; font-size:15px; }
-    a { display:block; text-align:center; margin-top:16px; color:#6b7280; font-size:13px; text-decoration:none; }
-    a:hover { color:#1a1a2e; }
+    a { display:block; text-align:center; margin-top:16px; color:#757575; font-size:13px; text-decoration:none; }
+    a:hover { color:#303F9F; }
     </style></head><body>
     <div class="login-wrap">
         <div class="login-box">
@@ -1246,17 +1187,17 @@ app.get('/welcome', requireAuthPage, (req, res) => {
     res.send(`<!DOCTYPE html><html><head><title>Welcome - FloofTracker</title><style>
     ${styles}
     .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin:20px 0; }
-    .feature-item { background:#f8f9fc; border:1px solid #eceef3; border-radius:12px; padding:20px; text-align:center; transition: transform .18s ease, box-shadow .18s ease; }
-    .feature-item:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16,24,40,.07); }
+    .feature-item { background:#fafafa; border:1px solid #e0e0e0; border-radius:2px; padding:20px; text-align:center; transition: box-shadow .18s ease, border-color .18s ease; }
+    .feature-item:hover { border-color:#3F51B5; box-shadow: 0 4px 8px rgba(0,0,0,.14); }
     .feature-item .icon { font-size:32px; margin-bottom:10px; }
-    .feature-item h4 { color:#1a1a2e; margin-bottom:6px; }
-    .feature-item p { color:#6b7280; font-size:13px; line-height:1.5; }
+    .feature-item h4 { color:#212121; margin-bottom:6px; }
+    .feature-item p { color:#757575; font-size:13px; line-height:1.5; }
     </style></head><body>
-    <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()">Logout</button></div>
+    <div class="header"><h1>FloofTracker</h1><button class="btn btn-light" onclick="logout()">Logout</button></div>
     <div class="container">
         <div class="card" style="text-align:center;padding:40px">
-            <h2 style="color:#1a1a2e;margin-bottom:10px">Welcome to FloofTracker </h2>
-            <p style="color:#6b7280;margin-bottom:30px">Here's what you can monitor on your employees' devices</p>
+            <h2 style="color:#212121;margin-bottom:10px">Welcome to FloofTracker </h2>
+            <p style="color:#757575;margin-bottom:30px">Here's what you can monitor on your employees' devices</p>
             <div class="feature-grid">
                 <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking every 5 minutes</p></div>
                 <div class="feature-item"><div class="icon">📞</div><h4>Call Logs</h4><p>Incoming, outgoing and missed calls with duration</p></div>
@@ -1281,11 +1222,11 @@ app.get('/plans', requireAuthPage, (req, res) => {
     ${styles}
     .btn { padding:12px 24px; font-size:14px; width:100%; margin-top:12px; }
     </style></head><body>
-    <div class="header"><h1>FloofTracker</h1><button class="btn btn-danger" onclick="logout()" style="width:auto">Logout</button></div>
+    <div class="header"><h1>FloofTracker</h1><button class="btn btn-light" onclick="logout()" style="width:auto">Logout</button></div>
     <div class="container">
         <div class="card">
-            <h2 style="color:#1a1a2e;margin-bottom:6px">Choose Your Plan</h2>
-            <p style="color:#6b7280;margin-bottom:24px">All plans include all features. Upgrade anytime.</p>
+            <h2 style="color:#212121;margin-bottom:6px">Choose Your Plan</h2>
+            <p style="color:#757575;margin-bottom:24px">All plans include all features. Upgrade anytime.</p>
             <div class="plan-grid">
                 <div class="plan-card" onclick="selectPlan('free')">
                     <h3>Free</h3>
@@ -1343,16 +1284,16 @@ app.get('/tokens', requireAuthPage, (req, res) => {
     </style></head><body>
     <div class="header"><h1>FloofTracker</h1>
         <div style="display:flex;gap:8px">
-            <button class="btn btn-outline" onclick="window.location.href='/plans'">Change Plan</button>
-            <button class="btn btn-danger" onclick="logout()">Logout</button>
+            <button class="btn btn-light" onclick="window.location.href='/plans'">Change Plan</button>
+            <button class="btn btn-light" onclick="logout()">Logout</button>
         </div>
     </div>
     <div class="container">
         <div class="card">
             <div class="top-bar">
                 <div>
-                    <h2 style="color:#1a1a2e">Your Devices</h2>
-                    <p style="color:#6b7280;font-size:13px;margin-top:4px">Plan: <b id="plan_label"></b> &nbsp;·&nbsp; <span id="device_count"></span></p>
+                    <h2 style="color:#212121">Your Devices</h2>
+                    <p style="color:#757575;font-size:13px;margin-top:4px">Plan: <b id="plan_label"></b> &nbsp;·&nbsp; <span id="device_count"></span></p>
                 </div>
                 <button class="btn btn-success" onclick="generateToken()">+ Add Device</button>
             </div>
@@ -1475,8 +1416,8 @@ app.get('/device', requireAuthPage, async (req, res) => {
             </small>
         </div>
         <div style="display:flex;gap:8px">
-            <button class="btn btn-outline" onclick="window.location.href='/tokens'">← Back</button>
-            <button class="btn btn-danger" onclick="window.location.href='/logout'">Logout</button>
+            <button class="btn btn-light" onclick="window.location.href='/tokens'">← Back</button>
+            <button class="btn btn-light" onclick="window.location.href='/logout'">Logout</button>
         </div>
     </div>
     <div class="container">
@@ -1521,7 +1462,7 @@ app.get('/device', requireAuthPage, async (req, res) => {
                             <td>${esc(new Date(c.called_at).toLocaleString())}</td>
                             <td>${recording ? 
                                 `<audio controls src="data:audio/mp4;base64,${esc(recording.audio_base64)}" class="audio-mini"></audio>` : 
-                                '<span style="color:#9ca3af;font-size:12px">No recording</span>'
+                                '<span style="color:#9e9e9e;font-size:12px">No recording</span>'
                             }</td>
                         </tr>`;
                     }).join('')}
@@ -1580,7 +1521,7 @@ app.get('/device', requireAuthPage, async (req, res) => {
                 <table>
                     <tr><th>Preview</th><th>Filename</th><th>Type</th><th>Actual Size</th><th>Date</th><th>Action</th></tr>
                     ${media.map(m => `<tr>
-                        <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${esc(m.thumbnail)}" data-src="data:image/jpeg;base64,${esc(m.thumbnail)}" onclick="openLightbox(this)"/>` : '<span style="color:#9ca3af;font-size:12px">No preview</span>'}</td>
+                        <td>${m.thumbnail ? `<img class="thumb" src="data:image/jpeg;base64,${esc(m.thumbnail)}" data-src="data:image/jpeg;base64,${esc(m.thumbnail)}" onclick="openLightbox(this)"/>` : '<span style="color:#9e9e9e;font-size:12px">No preview</span>'}</td>
                         <td>${esc(m.filename)}</td>
                         <td>${esc(m.media_type) === 'video' ? '🎬 Video' + (m.duration_ms ? ' (' + Math.round(m.duration_ms / 1000) + 's)' : '') : (m.is_screenshot ? '📸 Screenshot' : '🖼️ Photo')}</td>
                         <td>${Math.round(m.size_bytes / 1024)}KB</td>
@@ -1649,7 +1590,7 @@ app.get('/device', requireAuthPage, async (req, res) => {
         <!-- Remote Control Tab -->
         <div id="tab-remote" class="tab-content">
             <div class="card">
-                <h3 style="color:#1a1a2e;margin-bottom:6px">Remote Control</h3>
+                <h3 style="color:#212121;margin-bottom:6px">Remote Control</h3>
                 <p class="subtext">Commands are executed within 2 minutes when device is active.</p>
 
                 <div class="remote-grid">
