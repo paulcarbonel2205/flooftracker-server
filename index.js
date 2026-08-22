@@ -94,12 +94,29 @@ function sessionExpiry(sess) {
     return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);  // fallback: 7 days
 }
 
+const PORT = process.env.PORT || 3000;
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+    console.error('FATAL: MONGO_URI environment variable is not set.');
+    process.exit(1);
+}
+
+// ── Session secret ───────────────────────────────────────────────────────────
+// When SESSION_SECRET is not set, derive a deterministic secret from the
+// MongoDB URI so that the same secret is used across restarts and all existing
+// session cookies remain valid.  The MONGO_URI is already a secret (it
+// contains credentials), so this adds no new attack surface.
+const sessionSecret = process.env.SESSION_SECRET ||
+    crypto.createHash('sha256').update(MONGO_URI).update('flooftracker-session-secret-v1').digest('hex');
+
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('MongoDB connected'))
+    .catch(err => console.error('MongoDB error:', err));
+
 app.use(session({
     name: 'flooftracker.sid',
-    secret: process.env.SESSION_SECRET || (() => {
-        console.warn('WARNING: SESSION_SECRET is not set — sessions will not survive restarts.');
-        return crypto.randomBytes(32).toString('hex');
-    })(),
+    secret: sessionSecret,
     store: new MongoSessionStore(() => mongoose.connection.db),
     resave: false,
     saveUninitialized: false,
@@ -121,18 +138,6 @@ const bigJson = express.json({ limit: '52mb' });
 app.use(express.static(__dirname + '/public', {
     setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache')
 }));
-
-const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-    console.error('FATAL: MONGO_URI environment variable is not set.');
-    process.exit(1);
-}
-
-mongoose.connect(MONGO_URI)
-    .then(() => console.log('MongoDB connected'))
-    .catch(err => console.error('MongoDB error:', err));
 
 // Schemas
 const EmployerSchema = new mongoose.Schema({
